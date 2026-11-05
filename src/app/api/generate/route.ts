@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
+import { generateKieImage, generateKieImage25, generateKieNanoBanana, KIE_GPT_IMAGE_MODEL, KIE_NANO_BANANA_MODEL } from "@/lib/kie";
+import { buildCopyPayload, runCopyLint } from "@/lib/copyLintGate";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -7,9 +9,11 @@ export const maxDuration = 300;
 const OPENAI_IMAGE_MODEL = "gpt-image-2-2026-04-21";
 const GOOGLE_NANO_BANANA_2_MODEL = "gemini-3.1-flash-image-preview";
 const ANALYSIS_MODEL = process.env.OPENAI_ANALYSIS_MODEL || "gpt-5.5";
+const KIE_ANALYSIS_BASE_URL = process.env.KIE_ANALYSIS_BASE_URL || "https://open.bigmodel.cn/api/coding/paas/v4";
+const KIE_ANALYSIS_MODEL = process.env.KIE_ANALYSIS_MODEL || "glm-4.6v";
 const MAX_REFERENCE_IMAGES = 4;
 
-type Provider = "openai" | "google";
+type Provider = "openai" | "google" | "kie" | "kie-nano-banana" | "kie-gpt-image-2-5" | "kie-gpt-image-2-5-sunburst" | "openai-direct";
 
 /**
  * restructure: 원본 근거를 지키되 구매전환 흐름(S1~S8)으로 재구성한다.
@@ -38,6 +42,145 @@ type SectionCopy = {
   extras: string[];
 };
 
+/** 페이지 전체에서 한 번만 정의하는 고객 인사이트. */
+type CustomerCore = {
+  who: string;
+  pain: string;
+  solution: string;
+  gain: string;
+  objection: string;
+};
+
+/** 섹션별 카피를 쓰기 전에 참고하는 고객 메모. 실제 카피에는 focus에 해당하는 것만 드러낸다. */
+type CustomerInsight = {
+  pain: string;
+  solution: string;
+  gain: string;
+};
+
+/** 각 섹션이 답하는 질문 하나와 증거 유형 하나를 고정하는 계약. */
+type SectionContract = {
+  buyer_question: string;
+  focus: string;
+  one_sentence_answer: string;
+  proof_type: string;
+  proof_ref: string;
+  new_information: string;
+  forbidden: string[];
+};
+
+type SectionContractTemplate = {
+  id: string;
+  question: string;
+  focus: string;
+  proofType: string;
+  job: string;
+  forbidden: string[];
+};
+
+/**
+ * S1~S9는 각각 다른 구매 질문 하나만 맡는다.
+ * 같은 불편/해결/이득을 여러 섹션에서 반복하지 않도록, 분석 프롬프트와 이미지 프롬프트가 이 표를 공유한다.
+ */
+const SECTION_CONTRACTS: Record<string, SectionContractTemplate> = {
+  S1: {
+    id: "S1",
+    question: "이거 나한테 맞는 건가?",
+    focus: "identity",
+    proofType: "identity",
+    job: "타겟의 상황과 정체성을 부르고, 이 페이지가 해결할 약속 하나를 건다.",
+    forbidden: ["기능 나열", "근거", "후기", "배송 조건"]
+  },
+  S2: {
+    id: "S2",
+    question: "내 불편을 알기는 하나?",
+    focus: "pain",
+    proofType: "pain_scene",
+    job: "고객이 실제로 겪는 불편을 구체적인 장면으로 되짚는다.",
+    forbidden: ["제품 기능", "해결책", "브랜드 스토리"]
+  },
+  S3: {
+    id: "S3",
+    question: "그래서 내 하루가 어떻게 달라지나?",
+    focus: "gain",
+    proofType: "life_outcome",
+    job: "구매 후 달라지는 생활과 감정을 보여준다.",
+    forbidden: ["스펙", "비교표", "인증"]
+  },
+  S4: {
+    id: "S4",
+    question: "왜 하필 이거여야 하나?",
+    focus: "solution",
+    proofType: "mechanism",
+    job: "이 제품의 구조·소재·방식이 불편을 어떻게 없애는지 보여준다.",
+    forbidden: ["생활 변화 서사", "후기", "배송 조건"]
+  },
+  S5: {
+    id: "S5",
+    question: "말만 그런 거 아닌가?",
+    focus: "proof",
+    proofType: "objective_evidence",
+    job: "앞의 약속을 받치는 확인 가능한 사실만 보여준다.",
+    forbidden: ["개인 사용담", "평점", "CTA"]
+  },
+  S6: {
+    id: "S6",
+    question: "쓰기 번거롭지는 않나?",
+    focus: "ease",
+    proofType: "usage_step",
+    job: "받은 뒤 무엇을 하면 되는지 순서로 보여준다.",
+    forbidden: ["불편 반복", "근거 나열"]
+  },
+  S7: {
+    id: "S7",
+    question: "나 같은 사람이 써봤나?",
+    focus: "trust",
+    proofType: "human_experience",
+    job: "사람이 실제로 쓴 장면과 말로 사용감을 보여준다.",
+    forbidden: ["평점 숫자", "후기 개수", "스펙", "인증 주장"]
+  },
+  S8: {
+    id: "S8",
+    question: "잘못되면 어떡하지?",
+    focus: "risk",
+    proofType: "policy",
+    job: "확인된 배송·교환·반품 조건으로 마지막 불안을 없앤다.",
+    forbidden: ["마케팅 주장", "고시 표"]
+  },
+  S9: {
+    id: "S9",
+    question: "필수 정보가 빠지지 않았나?",
+    focus: "legal",
+    proofType: "legal",
+    job: "상품정보 제공고시 항목과 값만 표로 보여준다.",
+    forbidden: ["설득 카피", "후기", "혜택"]
+  }
+};
+
+const FOCUS_LABELS: Record<string, string> = {
+  identity: "타겟과 핵심 약속",
+  pain: "구매 전 불편",
+  gain: "구매 후 이득",
+  solution: "해결 방식",
+  proof: "객관적 근거",
+  ease: "사용 편의",
+  trust: "사용자 경험",
+  risk: "구매 불안 제거",
+  legal: "법정 고시"
+};
+
+const FOCUS_VISUALS: Record<string, string> = {
+  identity: "타겟이 '내 얘기'라고 느끼는 한 장면. 제품은 등장해도 되지만 기능 설명은 뒤로 미룬다.",
+  pain: "해결 전의 불편 장면. 제품을 해결책으로 강조하지 않고, 고객의 표정과 상황을 먼저 보여준다.",
+  gain: "사용 후 달라진 생활 장면. 표정, 자세, 공간의 변화로 이득을 보여준다.",
+  solution: "제품의 구조·소재·방식을 확대해서 보여준다. 과장된 비교 대신 실제 구조를 보여준다.",
+  proof: "확인 가능한 근거를 문서·표·라벨로 보여준다. 새 인증 배지를 만들지 않는다.",
+  ease: "사용 순서를 3단계 이내로 보여준다. 복잡한 설명 대신 행동으로.",
+  trust: "사람이 실제로 쓴 장면과 말을 보여준다. 평점 숫자와 후기 개수는 금지.",
+  risk: "배송·교환·반품 조건을 명확하게 보여준다. 마케팅 문구를 넣지 않는다.",
+  legal: "법정 고시 표만. 설득 문구를 넣지 않는다."
+};
+
 type Section = {
   section_id: string;
   image_id: string;
@@ -45,8 +188,13 @@ type Section = {
   purpose: string;
   source: string;
   copy: SectionCopy;
+  customer?: CustomerInsight;
+  contract?: SectionContract;
   prompt: string;
   promptText: string;
+  imageUrl?: string;
+  mimeType?: string;
+  error?: string;
 };
 
 export async function POST(request: NextRequest) {
@@ -56,23 +204,35 @@ export async function POST(request: NextRequest) {
     const productFiles = form.getAll("productFiles").filter((file): file is File => file instanceof File);
     const requestText = String(form.get("request") || "");
     const rolloutRequest = String(form.get("rolloutRequest") || "");
-    const provider = String(form.get("model") || "openai") === "google" ? "google" : "openai";
+    const target = String(form.get("target") || "");
+    const modelParam = String(form.get("model") || "openai");
+    const provider: Provider = modelParam === "openai-direct"
+      ? "openai-direct"
+      : modelParam === "google" || modelParam === "kie-nano-banana"
+      ? "kie-nano-banana"
+      : modelParam === "kie-gpt-image-2-5"
+        ? "kie-gpt-image-2-5"
+        : modelParam === "kie-gpt-image-2-5-sunburst"
+          ? "kie-gpt-image-2-5-sunburst"
+          : "kie";
     const channel = String(form.get("channel") || "스마트스토어");
     const ratio = String(form.get("ratio") || "9:16");
-    const count = clamp(Number(form.get("count") || 1), 1, 10);
+    const count = clamp(Number(form.get("count") || 1), 1, 1);
     const startSection = clamp(Number(form.get("startSection") || 1), 1, 10);
     const openaiKey = String(form.get("openaiKey") || "");
     const googleKey = String(form.get("googleKey") || "");
     const heroImageUrl = String(form.get("heroImageUrl") || "");
     const blueprintJson = String(form.get("blueprint") || "");
     const mode: RedesignMode = String(form.get("mode") || "restructure") === "preserve" ? "preserve" : "restructure";
-    const apiKey = provider === "google" ? googleKey : openaiKey;
+    const apiKey = provider === "openai-direct"
+      ? (openaiKey || process.env.OPENAI_API_KEY || "")
+      : "server-side-kie";
 
-    console.info(`[generate] request provider=${provider} mode=${mode} count=${count} startSection=${startSection} files=${files.length} productFiles=${productFiles.length} channel=${channel}`);
+    console.info(`[generate] request provider=${provider} mode=${mode} count=${count} startSection=${startSection} files=${files.length} productFiles=${productFiles.length} channel=${channel} target=${target || "(none)"}`);
 
     if (!apiKey) {
       return NextResponse.json(
-        { error: provider === "google" ? "Google Nano Banana 2 API 키가 필요합니다." : "OpenAI Image 2.0 API 키가 필요합니다." },
+        { error: "이미지 생성에 사용할 API 키가 설정되어 있지 않습니다. 설정에서 키를 확인해주세요." },
         { status: 400 }
       );
     }
@@ -94,6 +254,7 @@ export async function POST(request: NextRequest) {
     const payload: AnalysisPayload = {
       request: requestText,
       rolloutRequest,
+      target,
       options: { channel, ratio, count },
       hasProductImage: productReferences.length > 0,
       mode
@@ -121,7 +282,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 원본 구성 유지 모드에서는 총 장수를 원본에서 읽어낸 섹션 수가 결정한다.
-    const sectionTotal = mode === "preserve" ? blueprintSectionCount(analysis) : 8;
+    const sectionTotal = mode === "preserve" ? blueprintSectionCount(analysis) : 9;
     if (mode === "preserve") {
       if (sectionTotal === 0) {
         return NextResponse.json(
@@ -137,11 +298,40 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // G1 카피 검수 게이트: 분석이 만든 문구를 qa/copy_lint.py로 검사하고, P0이 있으면 이미지 생성 전에 중단한다.
+    // preserve 모드는 원본 문구 전사 작업이므로 검수를 적용하지 않는다.
+    if (mode !== "preserve") {
+      try {
+        const copyPayload = buildCopyPayload(analysis as Parameters<typeof buildCopyPayload>[0]);
+        const lintReport = await runCopyLint(copyPayload);
+        if (lintReport.blocked) {
+          console.warn(`[generate] copy_lint G1 blocked: P0=${lintReport.counts.P0}`);
+          const topIssues = lintReport.issues.filter((issue) => issue.severity === "P0").slice(0, 8);
+          for (const issue of topIssues) {
+            console.warn(
+              `[generate] copy_lint ${issue.rule} ${issue.severity} section=${issue.section} field=${issue.field || "-"} quote=${issue.quote} message=${issue.message}`
+            );
+          }
+          return NextResponse.json(
+            {
+              error: `카피 검수에서 심각한 문제(P0 ${lintReport.counts.P0}건)를 발견해 이미지 생성을 중단했습니다. 아래 문제 문구를 수정한 뒤 다시 시도해주세요.`,
+              copyLint: { blocked: true, verdict: lintReport.verdict, counts: lintReport.counts, issues: topIssues },
+              // 사용자가 '카피 직접 수정'으로 문제 문구를 고칠 수 있도록 분석 결과를 함께 돌려준다.
+              analysis,
+            },
+            { status: 422 }
+          );
+        }
+        console.info(`[generate] copy_lint G1 pass: verdict=${lintReport.verdict} P0=${lintReport.counts.P0} P1=${lintReport.counts.P1}`);
+      } catch (lintError) {
+        console.warn(`[generate] copy_lint failed (continue): ${lintError instanceof Error ? lintError.message : lintError}`);
+      }
+    }
     const sections = buildSections(count, startSection, payload, analysis, modelInfo);
     const projectTitle = inferProjectTitle(analysis, channel);
 
-    const generatedSections = [];
-    const failedSections = [];
+    const generatedSections: Section[] = [];
+    const failedSections: Section[] = [];
     for (const [index, section] of sections.entries()) {
       const references = buildSectionReferences({
         sectionId: section.section_id,
@@ -151,18 +341,31 @@ export async function POST(request: NextRequest) {
       });
       try {
         console.info(`[generate] ${provider} ${section.section_id} start (${index + 1}/${sections.length}) refs=${references.length}`);
-        const image = await withTransientRetry(section.section_id, () => (
-          provider === "google"
-            ? generateGoogleImage({ apiKey, prompt: section.promptText, references })
-            : generateOpenAIImage({ apiKey, prompt: section.promptText, references })
-        ));
-
+        const image = await withTransientRetry(section.section_id, () => {
+          const ratioForProvider = provider === "kie" || provider === "kie-nano-banana" || provider === "kie-gpt-image-2-5" || provider === "kie-gpt-image-2-5-sunburst" ? ratio : "";
+          if (provider === "kie") {
+            return generateKieImage({ prompt: section.promptText, references, ratio: ratioForProvider || "9:16" });
+          }
+          if (provider === "kie-nano-banana") {
+            return generateKieNanoBanana({ prompt: section.promptText, references, ratio: ratioForProvider || "9:16" });
+          }
+          if (provider === "kie-gpt-image-2-5") {
+            return generateKieImage25({ prompt: section.promptText, references, ratio: ratioForProvider || "9:16", quality: "flare" });
+          }
+          if (provider === "kie-gpt-image-2-5-sunburst") {
+            return generateKieImage25({ prompt: section.promptText, references, ratio: ratioForProvider || "9:16", quality: "sunburst" });
+          }
+          if (provider === "openai-direct") {
+            return generateOpenAIImage({ apiKey, prompt: section.promptText, references });
+          }
+          return generateOpenAIImage({ apiKey, prompt: section.promptText, references });
+        });
+        console.info(`[generate] ${provider} ${section.section_id} done bytes=${image.buffer.length} mime=${image.mimeType}`);
         generatedSections.push({
           ...section,
           imageUrl: `data:${image.mimeType};base64,${image.buffer.toString("base64")}`,
           mimeType: image.mimeType
         });
-        console.info(`[generate] ${provider} ${section.section_id} done bytes=${image.buffer.length} mime=${image.mimeType}`);
       } catch (error) {
         const message = error instanceof Error ? error.message : "이미지 생성 실패";
         console.error(`[generate] ${provider} ${section.section_id} failed: ${message}`);
@@ -214,9 +417,48 @@ export async function POST(request: NextRequest) {
   }
 }
 
+/**
+ * 방식 B 서버 키 분석. OpenAI 호환 chat/completions 엔드포인트(GLM 기본, KIE_ANALYSIS_PROVIDER=deepseek이면 DeepSeek).
+ */
+async function analyzeWithServerChat({ prompt, references }: { prompt: string; references: ReferenceImage[] }) {
+  const useDeepSeek = process.env.KIE_ANALYSIS_PROVIDER === "deepseek";
+  const apiKey = useDeepSeek ? (process.env.DEEPSEEK_API_KEY || "") : ((process.env.ZAI_BIGMODEL_API_KEY || process.env.ZAI_API_KEY) || "");
+  if (!apiKey) {
+    throw new Error(useDeepSeek
+      ? "DEEPSEEK_API_KEY가 서버에 설정되어 있지 않습니다."
+      : "ZAI_API_KEY가 서버에 설정되어 있지 않습니다. 서버 관리자에게 키 설정을 요청해주세요.");
+  }
+  const baseUrl = useDeepSeek ? (process.env.DEEPSEEK_BASE_URL || "https://api.deepseek.com") : KIE_ANALYSIS_BASE_URL;
+  const model = useDeepSeek ? (process.env.DEEPSEEK_ANALYSIS_MODEL || "deepseek-chat") : KIE_ANALYSIS_MODEL;
+
+  const content: Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }> = [{ type: "text", text: prompt }];
+  for (const reference of references.slice(0, MAX_REFERENCE_IMAGES)) {
+    content.push({
+      type: "image_url",
+      image_url: { url: `data:${reference.mimeType};base64,${reference.buffer.toString("base64")}` }
+    });
+  }
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content }]
+    })
+  });
+
+  const data = await readJsonResponse(response);
+  if (!response.ok) throw new Error(withRequestId(data?.error?.message || data?.message || "서버 분석 요청 실패", response));
+  const text = data?.choices?.[0]?.message?.content || "";
+}
 type AnalysisPayload = {
   request: string;
   rolloutRequest: string;
+  target: string;
   options: { channel: string; ratio: string; count: number };
   hasProductImage: boolean;
   mode: RedesignMode;
@@ -242,6 +484,9 @@ async function analyzeSource({
   try {
     if (provider === "google") {
       return await analyzeWithGoogle({ apiKey, prompt, references });
+    }
+    if (provider === "kie" || provider === "kie-nano-banana" || provider === "kie-gpt-image-2-5" || provider === "kie-gpt-image-2-5-sunburst") {
+      return await analyzeWithServerChat({ prompt, references });
     }
     return await analyzeWithOpenAI({ apiKey, prompt, references });
   } catch (error) {
@@ -302,6 +547,16 @@ function restructureAnalysisPrompt(payload: AnalysisPayload, modelInfo: ReturnTy
     `추가 요청사항: ${payload.request || "전환율 중심으로 리디자인"}`,
     payload.rolloutRequest ? `히어로 검토 후 반영할 요청: ${payload.rolloutRequest}` : "히어로 검토 후 요청: 없음",
     "",
+    "# 타겟 고객 (최우선 지시)",
+    payload.target
+      ? `이 페이지의 독자는 다음 타겟이다: ${payload.target}`
+      : "타겟이 지정되지 않았다. 제품 카테고리에서 가장 대표적인 구매층을 스스로 정한다.",
+    payload.target ? "타겟 지정 시 규칙(강제):" : "자체 지정 시 규칙(강제):",
+    "- 제품을 소개하는 것이 아니라, 타겟의 문제를 해결하는 페이지가 된다. 모든 섹션에서 제품보다 독자가 먼저 나온다.",
+    "- S1은 타겟의 상황·정체성을 부르는 문장이어야 한다. 독자가 아, 내 얘기네라고 멈추는 문장.",
+    "- S2 불편은 타겟 연령·상황에서 실제로 겪는 장면으로 쓴다. (예: 20대=외모·자신감, 30대=대인관계·상쾌함, 40대=건강·노화 대비, 주부=가족 관리, 직장인=시간 효율, 아이 있는 집=안전·간편)",
+    "- S3 생활변화·S5 근거·S8 안심도 타겟의 관심사에 맞춰 각도를 조정한다. 타겟이 신경 쓰지 않는 근거는 쓰지 않는다.",
+    "- 문구 톤과 이미지 연출(색·배경·장면)도 타겟에 맞춘다. 단, 근거 없는 수치·효능 창작은 여전히 금지다.",
     "# 독자의 머릿속에서 일어나는 일",
     "독자는 위에서 아래로 내려오며 질문을 순서대로 던진다. 앞 질문이 풀려야 다음 질문으로 넘어간다.",
     "각 섹션은 그중 질문 하나를 맡는다. 그 질문에 답하지 않는 섹션은 독자를 떠나게 만든다.",
@@ -315,13 +570,31 @@ function restructureAnalysisPrompt(payload: AnalysisPayload, modelInfo: ReturnTy
     "S4  \"왜 하필 이거여야 하나?\"",
     "    다른 선택지 대신 이걸 고를 이유를 압축한다. 비교 대상을 굳이 말하지 않아도 차이가 느껴지게.",
     "S5  \"말만 그런 거 아닌가?\"",
-    "    앞에서 한 약속을 받치는 확인 가능한 사실을 댄다. 소재, 구조, 시험, 인증, 만든 곳.",
+    "    앞에서 한 약속을 받치는 확인 가능한 사실을 댄다. 소재, 구조, 만든 곳. 인증·특허·시험은 원본에 인증번호·시험기관·측정값이 함께 있을 때만 쓴다.",
     "S6  \"쓰기 번거롭지는 않나?\"",
     "    받은 다음 무엇을 하면 되는지 순서로 보여준다. 구매 후 막막함을 미리 없앤다.",
     "S7  \"나 같은 사람이 써봤나?\"",
-    "    실제 사용감을 사람이 말한 문장처럼 옮긴다. 숫자가 아니라 장면으로.",
+    "    실제 사용감을 사람이 말한 문장처럼 옮긴다. 숫자가 아니라 장면으로. '후기', '리뷰', '구매평'이라는 단어는 화면에 쓰지 않는다.",
     "S8  \"잘못되면 어떡하지?\"",
     "    확인된 배송·교환 조건으로 마지막 불안을 치운다. 조건이 없으면 이 섹션은 짧아도 된다.",
+    "",
+    "# 고객의 불편 → 해결 → 이득 (페이지 전체 계약)",
+    "이 페이지는 제품 소개서가 아니라, 고객의 불편을 없애고 얻고 싶은 생활을 보여주는 페이지다.",
+    "아래 세 가지를 페이지 전체에서 한 번씩만, 서로 다른 섹션에서 보여준다.",
+    "- 불편(pain): S2에서 고객이 실제로 겪는 장면으로. 제품 기능보다 먼저 꺼낸다.",
+    "- 해결(solution): S4에서 이 제품의 구조·소재·방식이 그 불편을 어떻게 없애는지로.",
+    "- 이득(gain): S3와 S7에서 구매 후 달라지는 생활과 사람의 표정으로.",
+    "- 원본 상세페이지에 적힌 고객 고민·사용 장면·소재/구조 설명에서 근거를 찾고, 원본에 없는 효능·후기·수치는 만들지 않는다.",
+    "S1은 타겟과 약속, S5는 확인 가능한 근거, S6는 사용법, S8은 구매 불안 제거, S9는 고시만 맡는다.",
+    "같은 불편·해결·이득을 두 섹션에서 반복하지 않는다. 각 섹션은 아래 계약의 '답의 종류' 하나만 맡는다.",
+    "",
+    "# 섹션 계약 (강제)",
+    ...Object.values(SECTION_CONTRACTS).map((contract) =>
+      `- ${contract.id}: focus=${contract.focus}, proof_type=${contract.proofType}, 금지=${contract.forbidden.join(", ")}`
+    ),
+    "각 섹션의 contract.focus와 contract.proof_type은 위 표와 같아야 한다.",
+    "각 섹션의 contract.one_sentence_answer는 그 섹션만의 답이어야 한다. 다른 섹션의 답과 같은 말을 쓰지 않는다.",
+    "각 섹션의 contract.new_information에는 앞 섹션에 없던 새 정보 하나를 적는다.",
     "",
     "# 설득이 되는 문장의 구조",
     "독자가 얻는 것(headline)과 그것이 사실인 이유(desc)가 붙어 있어야 한다.",
@@ -336,10 +609,22 @@ function restructureAnalysisPrompt(payload: AnalysisPayload, modelInfo: ReturnTy
     "근거가 없는 자리는 비운다. 없다는 말을 문장으로 쓰는 것은 독자에게 할 말이 아니다.",
     "규제 리스크가 있으면 단정하지 않고 안전하게 표현한다.",
     "",
+    "# P0 금지 (고객에게 나가면 안 되는 문구)",
+    "- 화면 문구에 '후기', '리뷰', '구매평'을 쓰지 않는다. 리뷰 수를 확인할 수 없으므로 '사용 장면', '사용감'으로 쓴다.",
+    "- '일반 상세페이지', '기존 상세페이지', '타사 상세', '경쟁사 상세'를 비교 대상으로 쓰지 않는다.",
+    "- '인증', '특허', '시험 완료'는 원본에 인증번호·시험기관·측정값이 함께 있을 때만 쓴다. 없으면 소재·구조·만든 곳만 쓴다.",
+    "- 고시 값에 '상세페이지 참조', '상세 참조', '컨텐츠 참조'를 쓰지 않는다. 모르면 '미확인(검수 필요)'으로 표기한다.",
+    "- '100%'와 복수 소재를 함께 쓰지 않는다. 소재는 구성요소별로 나눠 쓴다.",
+    "- 경쟁 소재(석고, 유리섬유, 포름알데히드 등)를 깎는 표현을 쓰지 않는다.",
+    "",
     "# 출력 형식",
-    "JSON 키: product_inferred, diagnostic_summary, strategy, sections, compliance_notes",
-    "sections는 S1~S8 8개 배열이며 각 항목은 다음 형식을 반드시 지킨다.",
-    '{ "section_id": "S1", "eyebrow": "제품 카테고리나 특징을 말하는 라벨 12자 이내(예: 남성 테니스화, 무기자차 선크림). 확인 근거·착용 의견·구매 기준처럼 제작자가 붙인 분류 이름은 금지", "headline": "굵은 대제목 30자 이내, 2~3줄로 끊어 읽히게", "subheadline": "설명 45자 이내", "points": [{"label": "굵은 소제목 10자 이내", "desc": "구체적인 사실 설명 30자 이내"}], "extras": ["제품의 구체적 사실을 담은 짧은 라벨 8자 이내. 메뉴 이름 금지"], "evidence": "원본에서 확인된 근거만" }',
+    "JSON 키: customer_core, product_inferred, diagnostic_summary, strategy, sections, compliance_notes",
+    "customer_core는 페이지 전체의 고객 인사이트다. 모든 섹션은 이 코어와 모순되지 않아야 한다.",
+    '{ "who": "이 페이지를 보는 사람", "pain": "그 사람이 지금 겪는 가장 큰 불편", "solution": "이 제품이 그 불편을 없애는 방식", "gain": "구매 후 그 사람이 얻는 것", "objection": "구매를 망설이는 이유" }',
+    "sections는 S1~S9 9개 배열이며 각 항목은 다음 형식을 반드시 지킨다. S9은 상품정보 고시다.",
+    '{ "section_id": "S1", "eyebrow": "제품 카테고리나 특징을 말하는 라벨 12자 이내(예: 남성 테니스화, 무기자차 선크림). 확인 근거·착용 의견·구매 기준처럼 제작자가 붙인 분류 이름은 금지", "headline": "굵은 대제목 30자 이내, 2~3줄로 끊어 읽히게", "subheadline": "설명 45자 이내", "points": [{"label": "굵은 소제목 10자 이내", "desc": "구체적인 사실 설명 30자 이내"}], "extras": ["제품의 구체적 사실을 담은 짧은 라벨 8자 이내. 메뉴 이름 금지"], "evidence": "원본에서 확인된 근거만", "customer": { "pain": "이 섹션에서 보여줄 고객의 불편", "solution": "이 제품이 해결하는 방식", "gain": "구매 후 고객이 얻는 것" }, "contract": { "buyer_question": "이 섹션이 답하는 질문", "focus": "identity|pain|gain|solution|proof|ease|trust|risk|legal", "one_sentence_answer": "이 섹션만의 한 문장 답", "proof_type": "identity|pain_scene|life_outcome|mechanism|objective_evidence|usage_step|human_experience|policy|legal", "proof_ref": "원본에서 확인된 근거 위치", "new_information": "앞 섹션에 없던 새 정보", "forbidden": ["이 섹션에서 하지 말 것"] } }',
+    "각 섹션의 customer는 그 섹션 카피를 쓰기 전에 참고하는 메모다. 실제 카피에는 contract.focus에 해당하는 내용만 드러내고, 나머지는 문장으로 반복하지 않는다.",
+    "contract.focus는 위 섹션 계약의 값과 같아야 한다. 한 섹션에 불편·해결·이득을 모두 쓰지 않는다.",
     "eyebrow는 제품이 무엇인지 말하는 짧은 라벨이다(예: 남성 테니스화, 무기자차 선크림).",
     "points는 최대 3개, extras는 최대 5개. 확인되는 만큼만 쓰고, 없으면 줄이거나 비운다.",
     "구매 버튼이나 CTA 문구는 만들지 않는다. 한국 상세페이지는 이미지 안에 구매 버튼을 넣지 않는다.",
@@ -469,8 +754,8 @@ function buildSectionReferences({
   heroReference: ReferenceImage | null;
 }) {
   const references: ReferenceImage[] = [];
-  references.push(...productReferences.slice(0, 2));
-  if (heroReference && sectionId !== "S1") references.push(heroReference);
+  references.push(...productReferences.slice(0, MAX_REFERENCE_IMAGES));
+  if (heroReference && sectionId !== "S1" && references.length < MAX_REFERENCE_IMAGES) references.push(heroReference);
   for (const reference of sourceReferences) {
     if (references.length >= MAX_REFERENCE_IMAGES) break;
     references.push(reference);
@@ -486,6 +771,8 @@ type SectionPlan = {
   layout: string;
   order: number;
   copy: SectionCopy;
+  customer?: CustomerInsight;
+  contract?: SectionContract;
 };
 
 function buildSections(
@@ -496,13 +783,19 @@ function buildSections(
   modelInfo: ReturnType<typeof modelMeta>
 ): Section[] {
   const preserve = payload.mode === "preserve";
+  const customerCore = readCustomerCore(analysis);
   const plans: SectionPlan[] = preserve
     ? preserveSectionPlans(analysis, count, startSection)
-    : sectionTemplates(count, startSection).map((template, index) => ({
-        ...template,
-        order: startSection + index,
-        copy: pickSectionCopy(analysis, template.id)
-      }));
+    : sectionTemplates(count, startSection).map((template, index) => {
+        const match = findSectionRecord(analysis, template.id);
+        return {
+          ...template,
+          order: startSection + index,
+          copy: match ? readSectionCopy(match) : emptySectionCopy(),
+          customer: readCustomerInsight(match, customerCore),
+          contract: readSectionContract(match, SECTION_CONTRACTS[template.id])
+        };
+      });
 
   return plans.map((plan) => {
     const copy = plan.copy;
@@ -516,6 +809,7 @@ function buildSections(
         : "이번 작업은 전환 구조 리디자인이다. 원본의 사실만 지키고 구매전환 흐름으로 다시 구성한다.",
       preserve ? `원본 위치: 위에서 ${plan.order}번째 섹션` : `권장 레이아웃: ${plan.layout}`,
       `판매 채널: ${payload.options.channel}`,
+      payload.target ? `타겟 고객(최우선): 이 이미지를 보는 사람은 ${payload.target}이다. 색감·배경·장면·모델 연출을 이 타겟에 맞춘다.` : "",
       preserve
         ? `추가 요청사항(디자인과 레이아웃에만 반영하고 문구는 바꾸지 않는다): ${payload.request || "없음"}`
         : `추가 요청사항: ${payload.request || "전환율 중심으로 리디자인"}`,
@@ -539,9 +833,14 @@ function buildSections(
       "",
       "위 목록에서 괄호와 기호 뒤에 적힌 문장만 이미지에 그린다. '상단 라벨', '대제목', '설명', '1번 소제목' 같은 안내말과 콜론, 괄호, 번호, 하이픈, 쌍점 기호는 이미지에 그리지 않는다.",
       "위 목록에 적힌 문장이 이미지에 들어갈 유일한 텍스트다. 아래는 그림 그리는 방법 설명이며, 한 글자도 이미지에 그리지 않는다.",
+      !preserve && plan.contract && plan.customer
+        ? sectionContractPrompt(plan.contract, plan.customer, customerCore)
+        : "",
       "",
       "# 디자인 규칙",
-      "스타일: 한국 스마트스토어에서 흔히 보는 완성형 상세페이지 디자인을 따른다. 둥근 정보 카드, 체크 아이콘 목록, 원형 아이콘 배지, 번호 배지, 가로 아이콘 타일 줄, 포인트 컬러 강조를 적극적으로 사용하고 밝은 배경에 정돈된 그리드로 배치한다.",
+      "스타일: 한국 스마트스토어에서 흔히 보는 완성형 상세페이지 디자인을 따른다. 단, 위 [레이아웃: ...] 지시가 이 섹션의 뼈대이며 절대 우선이다. 다른 섹션과 레이아웃이 겹치면 실패다.",
+      "레이아웃 다양성(강제): 이 이미지는 상세페이지 9장 중 1장이다. 다른 장에서 흔히 쓰는 조합(알약 라벨 + 카드 3개 세로 스택 + 아이콘 타일)을 무조건 반복하지 않는다. [레이아웃] 지시에 없는 요소는 이 섹션에 필요 없다면 그리지 않는다.",
+      "색상 리듬(강제): 섹션마다 배경 톤과 강조색을 다르게 한다. 흰 배경이 3장 이상 연속되지 않게 하고, 강조색은 제품 사진에서 추출한 보색 계열 1가지로 통일한다. 형광·네온 원색 금지.",
       preserve
         ? "구성 유지(최우선): 위 문구의 순서와 의미를 원본 그대로 유지한다. 문구를 추가·삭제·요약·의역·번역하지 않고, 섹션의 주제도 바꾸지 않는다. 새로 만드는 것은 오직 디자인이다. 타이포 위계, 여백, 정렬, 카드와 그리드 구조, 아이콘, 컬러, 사진 배치만 현대적으로 끌어올린다."
         : "정보 밀도: 화면을 정보로 가득 채운다. 위에서 아래로 상단 라벨 → 대제목 → 설명 → 제품 사진 → 포인트 카드 → 아이콘 타일 줄 → 안내 문구 순으로 층을 쌓아 빈 곳을 남기지 않는다. 큰 빈 여백, 문구 3~4개만 떠 있는 헐렁한 구성은 실패로 간주한다.",
@@ -576,6 +875,8 @@ function buildSections(
       purpose: plan.purpose,
       source: plan.source,
       copy,
+      customer: plan.customer,
+      contract: plan.contract,
       prompt: promptText.replaceAll("\n", "<br>"),
       promptText
     };
@@ -639,18 +940,92 @@ function blueprintSectionCount(analysis: unknown) {
   return preserveBlueprintRecords(analysis).length;
 }
 
-/** 분석이 확정한 섹션 카피를 꺼낸다. 분석 실패 시에는 템플릿 목적을 그대로 쓰도록 빈 값을 준다. */
-function pickSectionCopy(analysis: unknown, sectionId: string): SectionCopy {
-  const empty: SectionCopy = { eyebrow: "", headline: "", subheadline: "", points: [], extras: [] };
+function emptySectionCopy(): SectionCopy {
+  return { eyebrow: "", headline: "", subheadline: "", points: [], extras: [] };
+}
+
+/** 분석 결과에서 S1~S9 중 해당 섹션 레코드를 찾는다. 카피/고객 메모/계약을 같은 레코드에서 읽기 위함이다. */
+function findSectionRecord(analysis: unknown, sectionId: string): Record<string, unknown> | undefined {
   const sections = (analysis as { sections?: unknown })?.sections;
   const list = Array.isArray(sections) ? sections : [];
-  const match = list.find((item) => {
+  return list.find((item) => {
     const id = (item as { section_id?: unknown })?.section_id;
     return typeof id === "string" && id.toUpperCase() === sectionId;
   }) as Record<string, unknown> | undefined;
+}
 
-  if (!match) return empty;
-  return readSectionCopy(match);
+function readCustomerCore(analysis: unknown): CustomerCore {
+  const raw = (analysis as { customer_core?: unknown })?.customer_core;
+  const record = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  return {
+    who: text(record.who),
+    pain: text(record.pain),
+    solution: text(record.solution),
+    gain: text(record.gain),
+    objection: text(record.objection)
+  };
+}
+
+function readCustomerInsight(match: Record<string, unknown> | undefined, core: CustomerCore): CustomerInsight {
+  const raw = match?.customer;
+  const record = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  return {
+    pain: text(record.pain) || core.pain,
+    solution: text(record.solution) || core.solution,
+    gain: text(record.gain) || core.gain
+  };
+}
+
+function readSectionContract(
+  match: Record<string, unknown> | undefined,
+  template: SectionContractTemplate
+): SectionContract {
+  const raw = match?.contract;
+  const record = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+  const rawForbidden = record.forbidden;
+  const forbidden = Array.isArray(rawForbidden)
+    ? rawForbidden.map((item) => text(item)).filter(Boolean)
+    : text(rawForbidden)
+      ? [text(rawForbidden)]
+      : template.forbidden;
+  return {
+    buyer_question: text(record.buyer_question) || template.question,
+    focus: text(record.focus) || template.focus,
+    one_sentence_answer: text(record.one_sentence_answer),
+    proof_type: text(record.proof_type) || template.proofType,
+    proof_ref: text(record.proof_ref),
+    new_information: text(record.new_information),
+    forbidden: forbidden.length > 0 ? forbidden : template.forbidden
+  };
+}
+
+/**
+ * 이미지 프롬프트에는 이 섹션의 역할만 넣는다.
+ * 고객의 불편/해결/이득을 모든 섹션에 반복하면 이미지도 같은 이야기를 반복하므로,
+ * focus에 해당하는 한 줄만 꺼내 쓴다.
+ */
+function sectionContractPrompt(
+  contract: SectionContract,
+  customer: CustomerInsight,
+  core: CustomerCore
+): string {
+  const lines = [
+    "# 이 섹션이 고객에게 남겨야 하는 것 (연출 지시, 글자로 그리지 않는다)",
+    `- 고객의 질문: ${contract.buyer_question}`,
+    `- 이 섹션의 역할: ${FOCUS_LABELS[contract.focus] || contract.focus}`
+  ];
+  if (contract.one_sentence_answer) lines.push(`- 이 섹션의 한 문장 답: ${contract.one_sentence_answer}`);
+  if (contract.focus === "identity" && core.who) lines.push(`- 이 페이지를 보는 사람: ${core.who}`);
+  if (contract.focus === "pain" && customer.pain) lines.push(`- 고객의 불편: ${customer.pain}`);
+  if (contract.focus === "solution" && customer.solution) lines.push(`- 해결 방식: ${customer.solution}`);
+  if (contract.focus === "gain" && customer.gain) lines.push(`- 고객이 얻는 것: ${customer.gain}`);
+  if (contract.focus === "proof" && contract.proof_ref) lines.push(`- 확인 가능한 근거 위치: ${contract.proof_ref}`);
+  if (contract.focus === "risk" && core.objection) lines.push(`- 고객이 망설이는 이유: ${core.objection}`);
+  if (contract.new_information) lines.push(`- 이 섹션에서 새로 말할 것: ${contract.new_information}`);
+  if (contract.forbidden.length > 0) lines.push(`- 이 섹션에서 하지 말 것: ${contract.forbidden.join(", ")}`);
+  lines.push(`- 연출: ${FOCUS_VISUALS[contract.focus] || "이 섹션의 역할에 맞는 장면 하나를 고른다."}`);
+  lines.push("이 줄들은 연출 지시이며 이미지에 글자로 그리지 않는다.");
+  return lines.join("\n");
 }
 
 /**
@@ -746,16 +1121,15 @@ function parseDataUrlReference(value: string): ReferenceImage | null {
 
 function sectionTemplates(count: number, startSection = 1) {
   const templates = [
-    ["S1 히어로", "3초 안에 제품, 타겟, 핵심 약속을 전달합니다.", "제품컷, 대표 USP", "상단 알약 라벨 + 아주 큰 3줄 대제목 + 설명 2줄. 오른쪽에 실사용 장면 제품컷을 크게 배치하고, 왼쪽 아래에 원형 아이콘 + 굵은 소제목 + 설명 2줄 구조의 포인트 3개를 세로로 쌓는다. 하단에는 아이콘 타일 줄을 흰 카드로 얹는다."],
-    ["S2 문제 공감", "고객이 자기 상황이라고 느끼는 체크리스트를 배치합니다.", "사용 전 고민 문구", "상단 알약 라벨 + 질문형 대제목. 체크 아이콘이 붙은 고민 카드 3~4개를 세로로 쌓고, 각 카드 오른쪽에 상황 사진 썸네일을 넣는다. 하단에 해결책 전환 문구."],
-    ["S3 베네핏 3개", "기능 나열을 체감 언어로 바꿔 기억 구조를 만듭니다.", "기능 설명, 사용 장점", "01/02/03 번호 배지가 붙은 가로 카드 3개를 세로로 쌓는다. 각 카드는 왼쪽 텍스트(굵은 소제목 + 설명 2줄), 오른쪽 사용 장면 사진 구조."],
-    ["S4 USP 차별점", "경쟁 제품 대비 선택 이유를 압축합니다.", "소재, 구성, 가격", "선택 이유 카드 3개 또는 2열 비교 구조. 상단에 대제목, 중앙에 제품컷, 하단에 아이콘 타일 줄."],
-    ["S5 근거/신뢰", "결과, 조건, 해석의 3단 구조로 신뢰를 설계합니다.", "인증, 수치, 테스트", "'안심하고 사용하세요' 형태의 신뢰 패널. 원형 아이콘 4개를 가로로 나열하고 각각 굵은 라벨 + 설명 2줄. 하단에 작은 안내 문구 한 줄."],
-    ["S6 사용법", "구매 후 사용 장벽을 낮춥니다.", "루틴, 구성품", "STEP 01·02·03 타임라인. 각 스텝에 사용 장면 사진 + 굵은 소제목 + 설명 2줄. 하단에 구성품 아이콘 타일 줄."],
-    ["S7 후기 카드", "실제 후기에서 확인된 사용감 문장만 보여줍니다.", "사용감 문장", "말풍선 형태의 후기 카드 3개를 세로로 쌓고 각 카드에 짧은 사용감 문장 하나. 상단에 대제목. 별 아이콘은 장식으로 써도 되지만 평점 숫자와 후기 개수는 그리지 않는다."],
-    ["S8 배송·교환 안내", "마지막 구매 저항을 해소합니다.", "배송, AS, 교환", "Q&A 카드 3개를 세로로 쌓는다. 각 카드는 Q 배지 + 질문 + 구체적인 답변 2줄. 확인된 조건이 3개보다 적으면 카드 수를 줄인다. 메뉴처럼 보이는 아이콘 줄은 넣지 않는다."],
-    ["S9 비교/보증", "선택 불안을 줄이는 비교표와 보증 구조를 제안합니다.", "보증, 비교 근거", "2열 비교 카드와 보증 배지 줄."],
-    ["S10 마무리 요약", "핵심 가치를 다시 압축해 정리합니다.", "핵심 요약", "핵심 요약 카드 3개와 아이콘 타일 줄로 마무리."]
+    ["S1 히어로", "3초 안에 제품, 타겟, 핵심 약속을 전달합니다.", "제품컷, 대표 USP", "[레이아웃: 풀블리드 히어로] 화면 전체를 제품 실사용 컷으로 채우고 그 위에 그라데이션 오버레이로 텍스트를 얹는다. 정보 카드와 아이콘 타일을 쓰지 않는다. 질문형 훅 한 줄(손글씨 느낌) - 제품명 대제목 - 핵심 약속 1줄 순으로, 하단에 요약 칩 3개만 가로 배치한다."],
+    ["S2 문제 공감", "고객이 자기 상황이라고 느끼는 체크리스트를 배치합니다.", "사용 전 고민 문구", "[레이아웃: 좌우 분할 다크] 화면을 세로로 반 나눈다. 왼쪽 절반은 밝은 배경에 질문형 대제목과 고민 3개(체크 박스 대신 손글씨 밑줄 스타일), 오른쪽 절반은 어둡고 차가운 톤의 고민 장면 사진을 세로로 꽉 채운다. 카드 프레임을 만들지 않고 텍스트를 배경 위에 직접 놓는다."],
+    ["S3 생활 변화", "구매 후 달라지는 생활을 체감 언어로 보여줍니다.", "사용 후 변화, 생활 장면", "[레이아웃: 가로 풀폭 배너 3단] 카드 프레임 없이 화면을 가로로 3등분한 풀폭 배너 3개를 위에서 아래로 쌓는다. 각 배너는 왼쪽에 아주 큰 숫자(01/02/03), 가운데 체감 언어 소제목, 오른쪽에 반쯤 잘린 근접 사진. 배너마다 배경 톤을 살짝 다르게 한다."],
+    ["S4 해결 방식", "이 제품의 구조·소재·방식이 불편을 어떻게 없애는지 보여줍니다.", "소재, 구조, 작동 방식", "[레이아웃: 구조 확대 다이어그램] 상단에 짧은 대제목 1줄, 중앙에 제품 단면이나 핵심 부위를 크게 확대한 사진 1장. 사진 위에 3개의 얇은 리더선과 짧은 라벨로 '무엇이 / 어떻게 / 그래서'를 표시한다. 하단에 3단 원리 카드(문제 → 구조 → 결과)를 가로로 배치한다. 비교표와 X/체크 표시는 쓰지 않는다."],
+    ["S5 근거/신뢰", "결과, 조건, 해석의 3단 구조로 신뢰를 설계합니다.", "인증, 수치, 테스트", "[레이아웃: 다크 패널 - 페이지 전체에서 유일한 어두운 배경] 짙은 네이비 또는 차콜 배경에 흰 텍스트. 중앙에 큰 따옴표 스타일의 근거 문장 1개, 그 아래 작은 근거 나열 3개(아이콘 없이 숫자와 라벨만). 밝은 색 카드를 만들지 않는다."],
+    ["S6 사용법", "구매 후 사용 장벽을 낮춥니다.", "루틴, 구성품", "[레이아웃: 지그재그 매거진] 사진과 텍스트가 좌우로 엇갈리는 3단 구조. 각 단은 반쯤 차는 큰 사진 한 장에 STEP 숫자와 짧은 설명 2줄을 살짝 겹쳐 놓는다. 카드 테두리 없이 사진에 텍스트를 겹치는 매거진 스타일."],
+    ["S7 사용 장면", "사람이 실제로 쓴 장면과 말로 사용감을 보여줍니다.", "사용 장면, 사용감 문장", "[레이아웃: 대형 인용구] 말풍선과 카드를 쓰지 않고, 큰 따옴표 기호와 함께 사용 장면에서 확인된 문장 3개를 세로로 크게 배치한다. 각 문장 아래 작은 작성자 라벨 하나. 배경은 아이보리 톤으로 다른 섹션과 구분한다. 별 아이콘은 장식으로 써도 되지만 평점 숫자와 후기 개수는 그리지 않는다."],
+    ["S8 배송·교환 안내", "마지막 구매 저항을 해소합니다.", "배송, AS, 교환", "[레이아웃: 심플 텍스트 리스트] 카드와 배지 없이 흰 배경에 항목당 한 줄씩(굵은 라벨 + 설명) 정돈된 리스트 4~5줄. 각 줄 왼쪽에 작은 라인 아이콘 하나만. 여백을 넉넉히 두고 마지막에 마무리 문구 한 줄. 확인된 조건이 적으면 줄 수를 줄인다."],
+    ["S9 상품정보 고시", "가격 분쟁·취소·반품 같은 구매 분쟁을 예방하는 법정 표시 세션이다.", "품명, 재질, 크기, 제조국, 제조자/수입자, A/S", "[레이아웃: 검은 배경의 테이블 - 페이지에서 유일한 어두운 테이블 형태이며 고시전용 세션] 각 행의 왼쪽에는 고시 조항명, 오른쪽에는 값. 원본 상세에 실제로 적힌 항목과 값만 행으로 만들고, 원본에 없는 항목은 행을 만들지 않는다(미확인·빈값·참조 문구 금지). 단 하나의 예외: 제조자·수입자 행은 원본에 어떤 상호가 적혀 있든 반드시 쩡스하우스로 표기한다. 한이룸·HANEERUM·HR 등 도구·브랜드 이름은 어떤 칸에도 쓰지 않는다. 확인된 항목이 적으면 표를 작게 하고 여백을 넉넉히 한다. 고시 섹션 생략 금지."],
   ];
 
   return templates
@@ -805,6 +1179,21 @@ function extractOpenAIText(data: { output?: Array<{ content?: Array<{ text?: str
 function modelMeta(provider: Provider) {
   if (provider === "google") {
     return { provider: "google" as const, label: "Google Nano Banana 2", id: GOOGLE_NANO_BANANA_2_MODEL };
+  }
+  if (provider === "kie") {
+    return { provider: "kie" as const, label: "KIE GPT-4o Image", id: KIE_GPT_IMAGE_MODEL };
+  }
+  if (provider === "kie-gpt-image-2-5") {
+    return { provider: "kie-gpt-image-2-5" as const, label: "KIE GPT Image 2.5 (Flare)", id: "gpt-image-2-5-flare-image-to-image" };
+  }
+  if (provider === "kie-gpt-image-2-5-sunburst") {
+    return { provider: "kie-gpt-image-2-5-sunburst" as const, label: "KIE GPT Image 2.5 (Sunburst)", id: "gpt-image-2-5-sunburst-image-to-image" };
+  }
+  if (provider === "kie-nano-banana") {
+    return { provider: "kie-nano-banana" as const, label: "KIE Nano Banana", id: KIE_NANO_BANANA_MODEL };
+  }
+  if (provider === "openai-direct") {
+    return { provider: "openai-direct" as const, label: "GPT Image 2.0 (OpenAI 직접)", id: OPENAI_IMAGE_MODEL };
   }
   return { provider: "openai" as const, label: "OpenAI Image 2.0", id: OPENAI_IMAGE_MODEL };
 }

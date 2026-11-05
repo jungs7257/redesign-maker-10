@@ -5,6 +5,9 @@ import type { NextConfig } from "next";
 const basePath = "/redesign/15";
 
 const nextConfig: NextConfig = {
+  // Tailscale/로컬 IP 접속 시 Next dev 리소스 cross-origin 차단 방지 (2026-10-30)
+  allowedDevOrigins: ["100.113.154.123", "192.168.0.6"],
+
   basePath,
   // basePath는 클라이언트 fetch 경로를 자동으로 바꿔주지 않아서 값을 직접 넘긴다.
   env: { NEXT_PUBLIC_BASE_PATH: basePath },

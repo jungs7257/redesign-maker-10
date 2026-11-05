@@ -1,0 +1,219 @@
+{
+  "version": "1.1.0",
+  "sections": 8,
+  "images": 8,
+  "image_total_mb": 19.38,
+  "counts": {
+    "P0": 5,
+    "P1": 13,
+    "P2": 4
+  },
+  "blocked": true,
+  "verdict": "FAIL",
+  "rendered": {
+    "lines": 19,
+    "source_sentences": 46,
+    "matched": 11,
+    "coverage": 0.239
+  },
+  "issues": [
+    {
+      "rule": "L001",
+      "severity": "P0",
+      "section": "S5",
+      "quote": "원본에 100% 규조토 표기",
+      "field": "point:규조토",
+      "message": "기획/제작 메모가 고객 카피로 노출됨 ('원본에')",
+      "fix": "고객이 얻는 결과로 다시 쓰세요. 예: '배치 연출' -> '문 앞에 두면 첫 발이 바로 닿습니다'"
+    },
+    {
+      "rule": "L001",
+      "severity": "P0",
+      "section": "S8",
+      "quote": "원본에 고객센터 표기가 있어요",
+      "field": "point:문의안내",
+      "message": "기획/제작 메모가 고객 카피로 노출됨 ('원본에')",
+      "fix": "고객이 얻는 결과로 다시 쓰세요. 예: '배치 연출' -> '문 앞에 두면 첫 발이 바로 닿습니다'"
+    },
+    {
+      "rule": "L003",
+      "severity": "P0",
+      "section": "RENDER",
+      "quote": "사워 뒤 나오는 첫자리에 둬요",
+      "field": "rendered_text",
+      "message": "[렌더 결과] 오타: '사워' -> '샤워'",
+      "fix": "'샤워'로 교체"
+    },
+    {
+      "rule": "L008",
+      "severity": "P0",
+      "section": "-",
+      "quote": "-",
+      "field": "notice",
+      "message": "상품정보 제공고시 섹션이 없음",
+      "fix": "재질/크기/제조국/제조자/품질보증/A/S/취급 주의를 담은 표를 추가하세요"
+    },
+    {
+      "rule": "L025",
+      "severity": "P0",
+      "section": "S5",
+      "quote": "비교표에 석고 0%로 표기",
+      "field": "point:석고0",
+      "message": "경쟁 제품 소재를 깎는 비교 주장 (석고) - 비교 근거 필요",
+      "fix": "내 제품 사실만 쓰거나, 비교표/성적서로 근거를 제시하세요. 예: '석고 0%' -> '규조토 성분으로만 만든 속매트'"
+    },
+    {
+      "rule": "L005",
+      "severity": "P1",
+      "section": "S5",
+      "quote": "원본에 100% 규조토 표기",
+      "field": "point:규조토",
+      "message": "절대 표현 (100%) - 근거 없이 쓰면 표시광고 리스크",
+      "fix": "수치 근거를 명시하거나 '~에 가깝습니다' 수준으로 낮추세요"
+    },
+    {
+      "rule": "L006",
+      "severity": "P1",
+      "section": "-",
+      "quote": "규조토 / 패브릭 + '100%' (구성 분리 서술: 겉커버, 구성, 내부, 분리, 속매트, 커버)",
+      "field": "document",
+      "message": "복수 소재 언급이 있으나 구성별로 나뉘어 있음 - 각 주장이 어느 구성요소인지 명시되어야 함",
+      "fix": "예: '속매트는 규조토 100%, 겉커버는 패브릭'처럼 소재를 구성요소에 붙여 쓰세요"
+    },
+    {
+      "rule": "L010",
+      "severity": "P1",
+      "section": "shipping",
+      "quote": "-",
+      "field": "shipping",
+      "message": "배송/교환/반품 실값 누락 (배송비, 반품)",
+      "fix": "배송비·반품비·교환비·신청 기간을 숫자로 적으세요"
+    },
+    {
+      "rule": "L014",
+      "severity": "P1",
+      "section": "S2",
+      "quote": "샤워 한 번에 / 발자국이 / 거실까지 갈 때",
+      "field": "headline",
+      "message": "헤드라인이 조건절('갈 때')로 끝나 결론이 없음",
+      "fix": "3번째 줄을 결과 문장으로 닫으세요. 예: '...걱정된다면' -> '...매트 하나로 끝납니다'"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "01_히어로.png",
+      "field": "image",
+      "message": "이미지 1장 3.14MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "02_문제공감.png",
+      "field": "image",
+      "message": "이미지 1장 2.90MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "03_베네핏3개.png",
+      "field": "image",
+      "message": "이미지 1장 2.60MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "04_USP차별점.png",
+      "field": "image",
+      "message": "이미지 1장 1.65MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "05_근거_신뢰.png",
+      "field": "image",
+      "message": "이미지 1장 2.58MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "06_사용법.png",
+      "field": "image",
+      "message": "이미지 1장 2.59MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "07_후기카드.png",
+      "field": "image",
+      "message": "이미지 1장 2.30MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "08_배송·교환안내.png",
+      "field": "image",
+      "message": "이미지 1장 1.62MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L021",
+      "severity": "P1",
+      "section": "-",
+      "quote": "8장 19.38MB",
+      "field": "image",
+      "message": "산출물 총 용량 19.38MB — 상한 3.0MB 초과",
+      "fix": "WebP 변환 + 섹션 분할 유지, 3MB 이하로"
+    },
+    {
+      "rule": "L012",
+      "severity": "P2",
+      "section": "S7",
+      "quote": "후기 카드",
+      "field": "section_name",
+      "message": "섹션/파일명에만 후기 표현이 있음 (화면 노출 아님, 참고)",
+      "fix": "파일명도 '09_사용장면'처럼 맞춰두면 나중에 헷갈리지 않습니다"
+    },
+    {
+      "rule": "L026",
+      "severity": "P2",
+      "section": "-",
+      "quote": "겉커버·수지미·규조토 구조  ->  겉커버·수지미·규조토 구성 확인",
+      "field": "rendered_text",
+      "message": "(부분 덤프) 문장 대조 불확실 (유사도 0.84) - 카피 원본과 다름",
+      "fix": "렌더 입력이 카피 소스를 그대로 쓰는지 확인하세요 (오타가 렌더 단계에서 생기는 경우가 있음)"
+    },
+    {
+      "rule": "L026",
+      "severity": "P2",
+      "section": "-",
+      "quote": "샤워 뒤 나오는 첫자리에 둬요  ->  사워 뒤 나오는 첫자리에 둬요",
+      "field": "rendered_text",
+      "message": "(부분 덤프) 문장 대조 불확실 (유사도 0.94) - 카피 원본과 다름",
+      "fix": "렌더 입력이 카피 소스를 그대로 쓰는지 확인하세요 (오타가 렌더 단계에서 생기는 경우가 있음)"
+    },
+    {
+      "rule": "L027",
+      "severity": "P2",
+      "section": "-",
+      "quote": "커버리지 24%",
+      "field": "rendered_text",
+      "message": "렌더 텍스트에서 원본 문장 11/46만 확인됨 - 추출이 일부만 된 상태",
+      "fix": "OCR/텍스트 추출 범위를 넓히거나, 추출본을 전부 넣고 다시 검수하세요"
+    }
+  ]
+}

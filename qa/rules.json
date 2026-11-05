@@ -1,0 +1,223 @@
+{
+  "version": "1.2.0",
+  "description": "상세페이지 카피/산출물 사전 검수 규칙 v1.2 (고객 불편→해결→이득 + 섹션 계약)",
+  "limits": {
+    "max_total_image_mb": 3.0,
+    "max_image_mb": 1.0,
+    "min_sections": 6,
+    "duplicate_similarity": 0.62,
+    "tile_repeat_threshold": 3,
+    "max_headline_lines": 4,
+    "near_miss_ratio": 0.8,
+    "render_coverage_warn": 0.6
+  },
+  "contract": {
+    "required_for_sections": ["S1", "S2", "S3", "S4", "S5", "S6", "S7", "S8", "S9"],
+    "required_fields": ["buyer_question", "focus", "one_sentence_answer", "proof_type"],
+    "required_customer_fields": ["pain", "solution", "gain"],
+    "allowed_focus": ["identity", "pain", "gain", "solution", "proof", "ease", "trust", "risk", "legal"],
+    "allowed_proof_types": ["identity", "pain_scene", "life_outcome", "mechanism", "objective_evidence", "usage_step", "human_experience", "policy", "legal"],
+    "min_proof_type_diversity": 4,
+    "answer_similarity_threshold": 0.72,
+    "new_info_similarity_threshold": 0.8,
+    "require_customer_core": true,
+    "required_customer_core_fields": ["who", "pain", "solution", "gain", "objection"]
+  },
+  "required_sections": {
+    "hero": "히어로",
+    "shipping": "배송/교환/반품"
+  },
+  "optional_but_recommended": {
+    "proof": "전후 비교 또는 사용 장면",
+    "care": "세탁/관리"
+  },
+  "planning_phrases": [
+    "배치 연출",
+    "사용 컷",
+    "장면 컷",
+    "연출컷",
+    "제품명에",
+    "상세 표기",
+    "표기 확인",
+    "이미지 교체",
+    "사진 교체",
+    "톤앤매너",
+    "무드 컷",
+    "구도",
+    "노출 컷",
+    "원본에",
+    "원문에",
+    "상품명에",
+    "템플릿",
+    "섹션명"
+  ],
+  "planning_word_endings": [
+    "표기",
+    "연출",
+    "장면",
+    "컷",
+    "구도",
+    "무드",
+    "위치",
+    "기준",
+    "확인"
+  ],
+  "typos": {
+    "사워": "샤워",
+    "발으면": "받으면",
+    "안전적인": "안전한",
+    "왠만": "웬만",
+    "몇일": "며칠",
+    "금새": "금세",
+    "어의없": "어이없",
+    "역활": "역할",
+    "햇갈": "헷갈",
+    "설겆이": "설거지",
+    "뵈요": "봬요",
+    "할께": "할게",
+    "갯수": "개수",
+    "오랫만": "오랜만",
+    "웬지": "왠지",
+    "담궈": "담가",
+    "구지": "굳이",
+    "됬": "됐",
+    "되요": "돼요"
+  },
+  "claims": [
+    "순간 흡수",
+    "즉시 흡수",
+    "빠른 건조",
+    "빠르게 건조",
+    "빠르게 마르",
+    "속건조",
+    "냄새 제거",
+    "탈취",
+    "항균",
+    "항곰팡이",
+    "살균",
+    "99.9",
+    "먼지 발생 최소화",
+    "먼지가 적",
+    "무독성",
+    "유해물질 없",
+    "친환경",
+    "천연 성분",
+    "피부 자극 없",
+    "무자극",
+    "1위",
+    "최다 판매",
+    "특허",
+    "인증",
+    "시험 완료",
+    "안전성 검증",
+    "냄새 걱정 최소화",
+    "먼지 걱정"
+  ],
+  "evidence_markers": [
+    "시험성적서",
+    "성적서",
+    "인증번호",
+    "KC인증",
+    "시험기관",
+    "측정값",
+    "FITI",
+    "KTR",
+    "KCL",
+    "SGS",
+    "한국건설생활환경시험연구원"
+  ],
+  "absolutes": [
+    "100%",
+    "완벽",
+    "완전",
+    "절대",
+    "전혀",
+    "모두 제거",
+    "영구"
+  ],
+  "invalid_comparison_targets": [
+    "일반 상세페이지",
+    "기존 상세페이지",
+    "타 상세",
+    "타사 상세",
+    "경쟁사 상세"
+  ],
+  "notice_required": [
+    "품명",
+    "재질",
+    "크기",
+    "제조국",
+    "제조자",
+    "품질보증",
+    "A/S",
+    "취급"
+  ],
+  "notice_forbidden": [
+    "상세페이지 참조",
+    "상세 참조",
+    "컨텐츠 참조"
+  ],
+  "shipping_required": [
+    "배송비",
+    "반품",
+    "교환"
+  ],
+  "shipping_evasion": [
+    "주문 전 확인",
+    "판매 조건 기준",
+    "판매자에게 문의",
+    "상세 참조",
+    "조건 확인"
+  ],
+  "review_labels": [
+    "후기",
+    "리뷰",
+    "구매평"
+  ],
+  "dangling_endings": [
+    "면",
+    "라면",
+    "다면",
+    "때",
+    "경우",
+    "위해"
+  ],
+  "materials": [
+    "규조토",
+    "패브릭",
+    "폴리에스터",
+    "코튼",
+    "순면",
+    "우레탄",
+    "메모리폼",
+    "실리콘",
+    "PVC",
+    "스테인리스"
+  ],
+  "render_bug_patterns": [
+    {
+      "pattern": "^(근|구|상|정|확|배|사)\\s+",
+      "hint": "섹션 제목 앞에 라벨 글자가 붙어 나온 렌더 버그"
+    }
+  ],
+  "negative_comparatives": [
+    "석고",
+    "무석고",
+    "유리섬유",
+    "포름알데히드",
+    "발암",
+    "1등급 제외"
+  ],
+  "composition_markers": [
+    "겉커버",
+    "속매트",
+    "본체",
+    "커버",
+    "내부",
+    "외부",
+    "상판",
+    "하판",
+    "분리",
+    "구성"
+  ]
+}

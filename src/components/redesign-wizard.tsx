@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ContactWidget } from "@/components/contact-widget";
+import { TextOverlayEditor } from "@/components/text-overlay-editor";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,17 +32,33 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, withBasePath } from "@/lib/utils";
 
-type Model = "openai" | "google";
+type Model = "openai" | "google" | "kie" | "kie-nano-banana" | "kie-gpt-image-2-5" | "kie-gpt-image-2-5-sunburst" | "openai-direct";
 type View = "dashboard" | "workspace" | "results";
 /** restructure: 전환 구조로 재구성 / preserve: 원본 구성과 문구를 그대로 두고 디자인만 새로 만든다. */
 type RedesignMode = "restructure" | "preserve";
 
-type SectionCopy = {
+export type SectionCopy = {
   eyebrow: string;
   headline: string;
   subheadline: string;
   points: Array<{ label: string; desc: string }>;
   extras: string[];
+};
+
+export type CustomerInsight = {
+  pain: string;
+  solution: string;
+  gain: string;
+};
+
+export type SectionContract = {
+  buyer_question: string;
+  focus: string;
+  one_sentence_answer: string;
+  proof_type: string;
+  proof_ref: string;
+  new_information: string;
+  forbidden: string[];
 };
 
 type SectionResult = {
@@ -51,6 +68,8 @@ type SectionResult = {
   source: string;
   prompt: string;
   copy?: SectionCopy;
+  customer?: CustomerInsight;
+  contract?: SectionContract;
   imageUrl?: string;
   revisions?: SectionRevision[];
 };
@@ -84,6 +103,22 @@ type Project = {
   savedAt?: string;
 };
 
+type CopyLintIssue = {
+  rule: string;
+  severity: string;
+  section: string;
+  quote: string;
+  field?: string;
+  message: string;
+  fix?: string;
+};
+
+type CopyLintBlock = {
+  error: string;
+  issues: CopyLintIssue[];
+  analysis?: unknown;
+};
+
 type GenerationPlan = {
   model: Model;
   count: number;
@@ -112,8 +147,98 @@ const models = {
   google: {
     label: "Google Nano Banana 2",
     id: "gemini-3.1-flash-image"
+  },
+  kie: {
+    label: "KIE GPT-4o Image",
+    id: "gpt-image-2-image-to-image"
+  },
+  "kie-nano-banana": {
+    label: "KIE Nano Banana",
+    id: "nano-banana-2-1"
+  },
+  "kie-gpt-image-2-5": {
+    label: "KIE GPT Image 2.5 Flare",
+    id: "gpt-image-2-5-flare-image-to-image"
+  },
+  "kie-gpt-image-2-5-sunburst": {
+    label: "KIE GPT Image 2.5 Sunburst",
+    id: "gpt-image-2-5-sunburst-image-to-image"
+  },
+  "openai-direct": {
+    label: "GPT Image 2.0 (OpenAI 직접)",
+    id: "gpt-image-2-2026-04-21"
   }
 };
+
+const modelDescriptions: Record<Model, string> = {
+  "kie-gpt-image-2-5": "GPT Image 2.5 Flare - 최저가·빠른 생성",
+  "kie-gpt-image-2-5-sunburst": "GPT Image 2.5 Sunburst - 고품질 생성",
+  "kie": "한글 카피 렌더링 강력 추천 (기본값)",
+  "kie-nano-banana": "kie.ai 경유 구글 나노바나나",
+  "openai": "kie.ai gpt-image-2 경유 (단일 KIE 키)",
+  "google": "kie.ai nano-banana 경유 (단일 KIE 키)",
+  "openai-direct": "kie.ai 우회 없이 OpenAI API 직접 호출 (OpenAI 크레딧 사용)"
+};
+const modelOrder: Model[] = ["openai-direct", "kie-gpt-image-2-5", "kie-gpt-image-2-5-sunburst", "kie", "kie-nano-banana", "openai", "google"];
+
+/** 눈에 띄는 독립 모델 선택 카드. 각 모델에 설명 + 서버 키 배지를 표시한다. */
+function ModelPicker({
+  value,
+  onChange,
+  serverKeys,
+  usable
+}: {
+  value: Model;
+  onChange: (model: Model) => void;
+  serverKeys: { openai: boolean; google: boolean; kie: boolean; kieNanoBanana: boolean };
+  usable: (model: Model) => boolean;
+}) {
+  const serverKeyOf = (model: Model) =>
+    model === "openai" || model === "openai-direct" ? serverKeys.openai : model === "google" ? serverKeys.google : serverKeys.kie;
+  return (
+    <Card className="p-4">
+      <div className="flex items-center justify-between gap-2">
+        <label className="text-xs font-bold text-muted-foreground">이미지 모델 선택</label>
+        <Badge variant="green">서버 키 사용 중</Badge>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {modelOrder.map((model) => {
+          const keyOk = usable(model);
+          const selected = value === model;
+          return (
+            <button
+              key={model}
+              type="button"
+              disabled={!keyOk}
+              onClick={() => onChange(model)}
+              className={cn(
+                "rounded-2xl bg-white p-3 text-left shadow-sm transition",
+                selected ? "ring-2 ring-emerald-400" : "hover:bg-emerald-50/50",
+                !keyOk && "cursor-not-allowed opacity-50"
+              )}
+            >
+              <span className="flex flex-wrap items-center gap-2">
+                <span className={cn("text-sm font-bold", selected && "text-emerald-700")}>{models[model].label}</span>
+                {model === "kie-gpt-image-2-5" ? <Badge variant="green">최저가 추천</Badge> : null}
+                {model === "kie-gpt-image-2-5-sunburst" ? <Badge variant="green">고품질</Badge> : null}
+                {model === "kie" ? <Badge variant="green">추천</Badge> : null}
+                {serverKeyOf(model) ? (
+                  <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-700">서버 키</span>
+                ) : (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">서버 키 없음</span>
+                )}
+                {selected ? <Check className="ml-auto size-4 text-emerald-600" /> : null}
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                {keyOk ? modelDescriptions[model] : "API 키가 없어 사용할 수 없습니다. 설정에서 키를 추가해주세요."}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
 
 const commerceTips = [
   "첫 화면은 제품명보다 '누구의 어떤 문제를 해결하는지'가 먼저 보여야 이탈이 줄어듭니다.",
@@ -157,7 +282,17 @@ export function RedesignWizard() {
   const [selectedModel, setSelectedModel] = React.useState<Model>("openai");
   const [redesignMode, setRedesignMode] = React.useState<RedesignMode>("restructure");
   const [channel, setChannel] = React.useState("스마트스토어");
+  // 정쓰님 요청(2026-10-31): 타겟 축(나이·성별·상황) 조합 선택 + 자유입력. 제품 중심이 아닌 타겟 중심 구조.
+  const [targetAges, setTargetAges] = React.useState<string[]>([]);
+  const [targetGenders, setTargetGenders] = React.useState<string[]>([]);
+  const [targetSituations, setTargetSituations] = React.useState<string[]>([]);
+  const [targetFree, setTargetFree] = React.useState("");
   const [count, setCount] = React.useState(1);
+  // 정쓰님 요청(2026-11-03): S1~S9 중 특정 섹션만 골라 1장 생성하는 개별 생성 모드.
+  const [singleSection, setSingleSection] = React.useState("");
+  // 정쓰님 요청(2026-11-04): 검수된 카피 JSON을 직접 지정하면 AI 분석을 건너뛰고 그 카피로 생성한다.
+  const [copyOverrideText, setCopyOverrideText] = React.useState("");
+  const [copyOverrideActive, setCopyOverrideActive] = React.useState(false);
   const [ratio, setRatio] = React.useState("9:16");
   const [files, setFiles] = React.useState<File[]>([]);
   const [productFiles, setProductFiles] = React.useState<File[]>([]);
@@ -166,7 +301,25 @@ export function RedesignWizard() {
   );
   const [openaiKey, setOpenaiKey] = React.useState("");
   const [googleKey, setGoogleKey] = React.useState("");
+  // 서버 키 상태는 낙관적으로 true로 시작한다. 실제 키가 없으면 config 조회 후 false로 갱신되어 막힌다.
+  // false로 시작하면 config fetch가 늦거나 실패한 순간 서버 키가 있어도 버튼이 막힌다(실제 발생한 버그).
+  const [serverKeys, setServerKeys] = React.useState<{ openai: boolean; google: boolean; kie: boolean; kieNanoBanana: boolean }>({ openai: true, google: true, kie: true, kieNanoBanana: true });
+  // 정쓰님 요청(2026-10-30): 4개 모델 전부 서버의 KIE_API_KEY(kie.ai) 단일 키로 동작한다.
+  // 되돌릴 때: 모델별 브라우저/서버 키(openai/google) 체크 로직 복원.
+  // const hasUsableKey = (model: Model) => {
+  //   if (model === "kie" || model === "kie-nano-banana" || model === "kie-gpt-image-2-5") return true;
+  //   const browserKey = model === "openai" ? Boolean(openaiKey) : Boolean(googleKey);
+  //   const serverKey = model === "openai" ? serverKeys.openai : serverKeys.google;
+  //   return browserKey || serverKey;
+  // };
+  const hasUsableKey = (_model: Model) => true;
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  // P0 카피 검수에 막혔을 때, 어떤 문구가 문제인지 보여주고 바로 수정할 수 있게 한다.
+  const [copyLintBlock, setCopyLintBlock] = React.useState<CopyLintBlock | null>(null);
+  // API 키 설정창을 열 때마다 서버 키 상태를 다시 조회한다. 초기 fetch가 실패했어도 여기서 회복된다.
+  React.useEffect(() => {
+    if (settingsOpen) serverKeysRefreshRef.current?.();
+  }, [settingsOpen]);
   const [generating, setGenerating] = React.useState(false);
   const [generationPlan, setGenerationPlan] = React.useState<GenerationPlan | null>(null);
   const [generationProgress, setGenerationProgress] = React.useState<GenerationProgress | null>(null);
@@ -176,6 +329,10 @@ export function RedesignWizard() {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const productInputRef = React.useRef<HTMLInputElement>(null);
   const generationAbortRef = React.useRef<AbortController | null>(null);
+  // 더블클릭 등으로 generate()가 동시에 2번 실행되어 이미지가 2번 생성(크레딧 2배 소모)되는 것을 막는 동기 가드.
+  // setGenerating(true)는 다음 렌더부터 반영되므로 state만으로는 첫 틱의 중복 호출을 못 막는다.
+  const generateInFlightRef = React.useRef(false);
+  const serverKeysRefreshRef = React.useRef<(() => void) | null>(null);
 
   React.useEffect(() => {
     const initial = loadProjects();
@@ -183,12 +340,44 @@ export function RedesignWizard() {
     setActiveProject(initial[0] ?? null);
     setOpenaiKey(localStorage.getItem("hanirum-openai-key") || "");
     setGoogleKey(localStorage.getItem("hanirum-google-key") || "");
+    // 방식 B: 서버에 키가 설정되어 있으면 브라우저 키 없이도 바로 사용할 수 있다.
+    const refreshServerKeys = () => {
+      fetch(`${process.env.NEXT_PUBLIC_BASE_PATH}/api/config`).then((res) => res.ok ? res.json() : {} as Record<string, unknown>).then((config: Record<string, unknown>) => {
+        // 정쓰님 요청(2026-10-30): 4개 모델 전부 serverKieKeyConfigured 기준으로 사용 가능 표시.
+        // 되돌릴 때: openai/serverOpenaiKeyConfigured, google/serverGoogleKeyConfigured 매핑 복원.
+        const kieConfigured = Boolean(config.serverKieKeyConfigured);
+        setServerKeys({
+          openai: kieConfigured,
+          google: kieConfigured,
+          kie: kieConfigured,
+          kieNanoBanana: kieConfigured
+        });
+      }).catch(() => {});
+    };
+    refreshServerKeys();
+    serverKeysRefreshRef.current = refreshServerKeys;
     loadSavedProjects().then((savedProjects) => {
       if (savedProjects.length === 0) return;
       setProjects(savedProjects);
       setActiveProject(savedProjects[0]);
     });
   }, []);
+
+  // 선택한 모델을 브라우저에 유지한다. 저장값이 비어 있으면 기본값은 그대로 둔다.
+  // 마이그레이션: KIE 계열 저장값은 정쓰님 요청에 따라 딱 한 번 openai로 강제 전환한다.
+  React.useEffect(() => {
+    const saved = localStorage.getItem("hanirum-selected-model") as Model | null;
+    if (!saved || !(saved in models)) return;
+    if (saved === "kie" || saved === "kie-nano-banana" || saved === "kie-gpt-image-2-5") {
+      setSelectedModel("openai");
+      localStorage.setItem("hanirum-selected-model", "openai");
+      return;
+    }
+    setSelectedModel(saved);
+  }, []);
+  React.useEffect(() => {
+    localStorage.setItem("hanirum-selected-model", selectedModel);
+  }, [selectedModel]);
 
   React.useEffect(() => {
     if (!toast) return;
@@ -233,8 +422,15 @@ export function RedesignWizard() {
     baseProject?: Project | null,
     showWaitVideo = false,
     displayCount = nextCount,
-    displayIndex = 1
+    displayIndex = 1,
+    keepLock = false
   ): Promise<Project | null> {
+    // 진행 중이면 무조건 재호출 차단 (더블클릭/StrictMode 재실행 방지)
+    // keepLock=true는 전체 생성/이어서 생성 시퀀스의 내부 호출이므로 락 검사를 건너뛴다.
+    if (!keepLock && generateInFlightRef.current) {
+      setToast("이미 생성이 진행 중입니다. 완료 후 다시 시도해주세요.");
+      return Promise.resolve(null);
+    }
     const outputCount = typeof nextCount === "number" && Number.isFinite(nextCount) ? nextCount : count;
     const outputRolloutRequest = typeof nextRolloutRequest === "string" ? nextRolloutRequest : "";
     // 이어서 생성할 때는 그 작업이 시작된 모드를 그대로 따른다.
@@ -249,8 +445,7 @@ export function RedesignWizard() {
       return null;
     }
 
-    const hasKey = selectedModel === "openai" ? Boolean(openaiKey) : Boolean(googleKey);
-    if (!hasKey) {
+    if (!hasUsableKey(selectedModel)) {
       setToast(`${models[selectedModel].label} API 키를 먼저 설정해주세요.`);
       setSettingsOpen(true);
       return null;
@@ -263,16 +458,30 @@ export function RedesignWizard() {
         count: outputCount,
         startSection
       });
-      let workingProject: Project | null = null;
-      // 원본 구성 유지 모드의 총 장수는 첫 장을 만들면서 확정되는 원본 섹션 수를 따른다.
-      let totalCount = outputCount;
-      for (let sectionNumber = startSection; sectionNumber < startSection + totalCount; sectionNumber += 1) {
-        const nextProject = await generate(1, outputRolloutRequest, sectionNumber, workingProject, true, totalCount, sectionNumber - startSection + 1);
-        if (!nextProject) return workingProject;
-        workingProject = nextProject;
-        if (activeMode === "preserve") totalCount = totalSectionsOf(workingProject);
+      // 시퀀스 전체에 생성 락을 유지한다. 내부 count=1 호출이 finally에서 락을 풀어도
+      // 다음 섹션이 시작되기 전 빈틈에 재클릭이 들어오면 병렬 시퀀스가 생기므로, 락은
+      // 시퀀스가 소유하고 마지막에 한 번만 해제한다.
+      generateInFlightRef.current = true;
+      setGenerating(true);
+      try {
+        let workingProject: Project | null = null;
+        // 원본 구성 유지 모드의 총 장수는 첫 장을 만들면서 확정되는 원본 섹션 수를 따른다.
+        // 전체 8장 생성은 법정 상품정보 고시(S9)를 포함해 9장으로 마무리한다.
+        // 1장 등 부분 생성 요청은 요청한 장수만 생성한다.
+        let totalCount = activeMode === "preserve"
+          ? outputCount
+          : outputCount >= 8 ? 9 : outputCount;
+        for (let sectionNumber = startSection; sectionNumber < startSection + totalCount; sectionNumber += 1) {
+          const nextProject = await generate(1, outputRolloutRequest, sectionNumber, workingProject, true, totalCount, sectionNumber - startSection + 1, true);
+          if (!nextProject) return workingProject;
+          workingProject = nextProject;
+          if (activeMode === "preserve") totalCount = totalSectionsOf(workingProject);
+        }
+        return workingProject;
+      } finally {
+        generateInFlightRef.current = false;
+        setGenerating(false);
       }
-      return workingProject;
     }
 
     reportClientLog("generate:start", {
@@ -283,6 +492,7 @@ export function RedesignWizard() {
       files: files.length,
       append: Boolean(baseProject)
     });
+    generateInFlightRef.current = true;
     setGenerationPlan({
       model: selectedModel,
       count: outputCount,
@@ -292,6 +502,7 @@ export function RedesignWizard() {
       startedAt: Date.now()
     });
     setGenerating(true);
+    setCopyLintBlock(null);
     setToast("원본 자료를 이미지 생성용 PNG로 변환하는 중입니다.");
     const abortController = new AbortController();
     generationAbortRef.current = abortController;
@@ -303,13 +514,30 @@ export function RedesignWizard() {
         : [await dataUrlToFile(await compressImageForRequest(fallbackSourceImage), "source-reference.jpg")];
       if (abortController.signal.aborted) throw new DOMException("생성 요청을 취소했습니다.", "AbortError");
       setToast("원본 분석과 실제 이미지 생성을 시작합니다.");
-      const uploadProductFiles = productFiles.length > 0 ? await normalizeFilesForUpload(productFiles) : [];
+      // 정쓰님 규칙(2026-10-30): 이어서 생성(새로고침/저장된 작업 재열기) 시 업로드 파일이 사라져도
+      // product 컷을 잃으면 생성물이 엉뚱한 물품이 된다. 이어서 생성 시에는 S1 히어로 이미지를
+      // product 참조로 재사용해 서버에 productFiles로 반드시 전달한다.
+      const fallbackProductImage = !productFiles.length
+        ? baseProject?.sections.find((section) => section.id === "S1")?.imageUrl || ""
+        : "";
+      const uploadProductFiles = productFiles.length > 0
+        ? await normalizeFilesForUpload(productFiles)
+        : fallbackProductImage
+          ? [await dataUrlToFile(await compressImageForRequest(fallbackProductImage), "product-reference.jpg")]
+          : [];
       uploadFiles.forEach((file) => form.append("files", file));
       uploadProductFiles.forEach((file) => form.append("productFiles", file));
       form.append("request", request);
       form.append("model", selectedModel);
       form.append("mode", activeMode);
       form.append("channel", channel);
+      const targetSummary = [
+        targetAges.length ? `연령대: ${targetAges.join(", ")}` : "",
+        targetGenders.length ? `성별: ${targetGenders.join(", ")}` : "",
+        targetSituations.length ? `상황/라이프스타일: ${targetSituations.join(", ")}` : "",
+        targetFree.trim() ? `상세 타겟: ${targetFree.trim()}` : ""
+      ].filter(Boolean).join(" / ");
+      form.append("target", targetSummary);
       form.append("ratio", ratio);
       form.append("count", String(outputCount));
       form.append("startSection", String(startSection));
@@ -321,7 +549,15 @@ export function RedesignWizard() {
       if (heroImageUrl && startSection > 1) {
         form.append("heroImageUrl", await compressImageForRequest(heroImageUrl));
       }
-      if (baseProject?.analysis) {
+      if (copyOverrideActive) {
+        const parsedOverride = parseCopyOverride(copyOverrideText);
+        if (parsedOverride) {
+          // 정쓰님 요청(2026-11-04): 검수된 카피 JSON 우선 — AI 분석 건너뛰고 이 카피로 생성.
+          form.append("blueprint", JSON.stringify(parsedOverride));
+        } else if (baseProject?.analysis) {
+          form.append("blueprint", JSON.stringify(baseProject.analysis));
+        }
+      } else if (baseProject?.analysis) {
         form.append("blueprint", JSON.stringify(baseProject.analysis));
       }
 
@@ -339,7 +575,16 @@ export function RedesignWizard() {
         generated: data.project?.sections?.length || 0,
         warning: data.project?.warning || ""
       });
-      if (!response.ok) throw new Error(data.error || "생성 요청 실패");
+      if (!response.ok) {
+        if (data.copyLint?.blocked && Array.isArray(data.copyLint.issues) && data.copyLint.issues.length > 0) {
+          setCopyLintBlock({
+            error: data.error || "카피 검수에서 문제를 발견했습니다.",
+            issues: data.copyLint.issues,
+            analysis: data.analysis
+          });
+        }
+        throw new Error(data.error || "생성 요청 실패");
+      }
       if (!data.project?.sections?.length) {
         throw new Error(data.project?.warning || "생성 응답은 성공했지만 표시할 이미지가 없습니다. 서버 로그의 generated/failed 값을 확인해주세요.");
       }
@@ -354,6 +599,8 @@ export function RedesignWizard() {
           source: section.source,
           prompt: section.prompt,
           copy: section.copy,
+          customer: section.customer,
+          contract: section.contract,
           imageUrl: section.imageUrl
         }))
       };
@@ -377,7 +624,11 @@ export function RedesignWizard() {
       return null;
     } finally {
       if (generationAbortRef.current === abortController) generationAbortRef.current = null;
-      setGenerating(false);
+      // 시퀀스 내부 호출(keepLock)일 때는 시퀀스가 락을 소유하므로 여기서 풀지 않는다.
+      if (!keepLock) {
+        generateInFlightRef.current = false;
+        setGenerating(false);
+      }
     }
   }
 
@@ -409,11 +660,35 @@ export function RedesignWizard() {
       return;
     }
 
-    for (const [index, sectionNumber] of missingSections.entries()) {
-      setToast(`S${sectionNumber} 섹션을 생성합니다.`);
-      const nextProject = await generate(1, rolloutRequest, sectionNumber, workingProject, true, missingSections.length, index + 1);
-      if (!nextProject) break;
-      workingProject = nextProject;
+    // 이어서 생성 시퀀스도 전체 구간에 생성 락을 유지한다.
+    generateInFlightRef.current = true;
+    setGenerating(true);
+    try {
+      for (const [index, sectionNumber] of missingSections.entries()) {
+        setToast(`S${sectionNumber} 섹션을 생성합니다.`);
+        const nextProject = await generate(1, rolloutRequest, sectionNumber, workingProject, true, missingSections.length, index + 1, true);
+        if (!nextProject) break;
+        workingProject = nextProject;
+      }
+    } finally {
+      generateInFlightRef.current = false;
+      setGenerating(false);
+    }
+  }
+
+  /** 정쓰님 요청(2026-11-03): S1~S9 중 선택한 섹션 1장만 생성한다. blueprint로 카피·스타일을 이어받는다. */
+  async function generateSingleSection(sectionNumber: number) {
+    const baseProject = activeProject;
+    if (!baseProject && files.length === 0) {
+      setToast("기존 상세페이지 이미지 또는 PDF를 먼저 업로드해주세요.");
+      setView("workspace");
+      return;
+    }
+    setSingleSection("S" + sectionNumber);
+    try {
+      await generate(1, rolloutRequest, sectionNumber, baseProject, false, 1, 1);
+    } finally {
+      setSingleSection("");
     }
   }
 
@@ -485,8 +760,7 @@ export function RedesignWizard() {
       setToast("저장된 이미지가 없는 섹션은 수정할 수 없습니다. 다시 생성한 뒤 시도해주세요.");
       return;
     }
-    const hasKey = model === "openai" ? Boolean(openaiKey) : Boolean(googleKey);
-    if (!hasKey) {
+    if (!hasUsableKey(model)) {
       setToast(`${models[model].label} API 키를 먼저 설정해주세요.`);
       setSettingsOpen(true);
       return;
@@ -557,6 +831,9 @@ export function RedesignWizard() {
     generationAbortRef.current?.abort();
     generationAbortRef.current = null;
     setEditingSectionId(null);
+    // 취소 시 진행 중 시퀀스의 내부 호출이 AbortError로 빠져나가며 락을 정리하므로,
+    // 혹시 남아 있더라도 락을 확실히 풀어 다음 생성이 막히지 않게 한다.
+    generateInFlightRef.current = false;
     setGenerating(false);
     setToast("요청을 취소했습니다. 이미 서버에 전달된 외부 API 요청은 잠시 후 로그에 완료될 수 있습니다.");
   }
@@ -572,7 +849,7 @@ export function RedesignWizard() {
         >
           <BrandMark />
           <div>
-            <strong className="block text-sm leading-tight">한이룸의 상세페이지<br />리디자인 마법사 1.5</strong>
+            <strong className="block text-sm leading-tight">쩡스하우스 상세페이지<br />리디자인 마법사</strong>
           </div>
         </button>
         <nav className="grid gap-1.5 max-[1120px]:grid-cols-3">
@@ -603,7 +880,7 @@ export function RedesignWizard() {
             <KeyRound className="size-3.5" />
             API 키
           </span>
-          <Badge variant={openaiKey || googleKey ? "green" : "default"}>{openaiKey || googleKey ? "연결됨" : "필요"}</Badge>
+          <Badge variant={(openaiKey || googleKey || serverKeys.openai || serverKeys.google) ? "green" : "default"}>{(openaiKey || googleKey || serverKeys.openai || serverKeys.google) ? "연결됨" : "필요"}</Badge>
         </button>
       </aside>
 
@@ -620,10 +897,20 @@ export function RedesignWizard() {
           <Workspace
             selectedModel={selectedModel}
             setSelectedModel={setSelectedModel}
+            serverKeys={serverKeys}
+            hasUsableKey={hasUsableKey}
             redesignMode={redesignMode}
             setRedesignMode={setRedesignMode}
             channel={channel}
             setChannel={setChannel}
+            targetAges={targetAges}
+            setTargetAges={setTargetAges}
+            targetGenders={targetGenders}
+            setTargetGenders={setTargetGenders}
+            targetSituations={targetSituations}
+            setTargetSituations={setTargetSituations}
+            targetFree={targetFree}
+            setTargetFree={setTargetFree}
             count={count}
             setCount={setCount}
             ratio={ratio}
@@ -638,6 +925,13 @@ export function RedesignWizard() {
             productInputRef={productInputRef}
             generating={generating}
             onGenerate={() => generate()}
+            onGenerateSection={generateSingleSection}
+            singleSection={singleSection}
+            hasBlueprint={Boolean(currentProject?.analysis || projects.some((candidate) => candidate.analysis))}
+            copyOverrideText={copyOverrideText}
+            setCopyOverrideText={setCopyOverrideText}
+            copyOverrideActive={copyOverrideActive}
+            setCopyOverrideActive={setCopyOverrideActive}
           />
         )}
         {view === "results" && (
@@ -647,6 +941,7 @@ export function RedesignWizard() {
             setRolloutRequest={setRolloutRequest}
             onToast={setToast}
             onSave={() => saveCurrentProject(currentProject)}
+            hasUsableKey={hasUsableKey}
             onEditSection={editSection}
             onGenerateRest={generateRemainingSections}
             generating={generating}
@@ -674,6 +969,64 @@ export function RedesignWizard() {
               <Button variant="ghost" onClick={clearSettings}>키 초기화</Button>
               <Button variant="secondary" onClick={() => setSettingsOpen(false)}>닫기</Button>
               <Button onClick={saveSettings}>저장</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(copyLintBlock)}
+        onOpenChange={(open) => {
+          if (!open) setCopyLintBlock(null);
+        }}
+      >
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>카피 검수에서 P0 문제를 발견했습니다</DialogTitle>
+            <DialogDescription>
+              이미지를 만들기 전에 아래 문구를 고쳐야 합니다. 문제 문구와 수정 방법을 확인한 뒤 다시 생성해주세요.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid max-h-[70vh] gap-3 overflow-y-auto p-4">
+            {copyLintBlock?.issues.map((issue, index) => (
+              <div
+                key={`${issue.rule}-${issue.section}-${index}`}
+                className="rounded-xl border border-red-100 bg-red-50/60 p-3 text-sm"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge variant="red">{issue.rule}</Badge>
+                  <span className="text-xs font-semibold text-muted-foreground">{issue.section || "-"}</span>
+                  {issue.field ? <span className="text-xs text-muted-foreground">· {issue.field}</span> : null}
+                </div>
+                <p className="mt-2 font-semibold leading-relaxed text-foreground">{issue.message}</p>
+                {issue.quote ? (
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                    문제 문구: <span className="font-medium text-foreground">{issue.quote}</span>
+                  </p>
+                ) : null}
+                {issue.fix ? (
+                  <p className="mt-1 text-xs leading-relaxed text-emerald-700">수정: {issue.fix}</p>
+                ) : null}
+              </div>
+            ))}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              P0는 고객에게 나가면 안 되는 문구입니다. P1/P2 경고는 생성이 막히지 않습니다.
+            </p>
+            <div className="flex flex-wrap justify-end gap-2 pt-1">
+              <Button variant="secondary" onClick={() => setCopyLintBlock(null)}>닫기</Button>
+              {copyLintBlock?.analysis ? (
+                <Button
+                  onClick={() => {
+                    setCopyOverrideText(JSON.stringify(copyLintBlock.analysis, null, 2));
+                    setCopyOverrideActive(true);
+                    setView("workspace");
+                    setCopyLintBlock(null);
+                    setToast("카피 JSON을 열었습니다. 문제 문구를 수정한 뒤 다시 생성해주세요.");
+                  }}
+                >
+                  카피 직접 수정
+                </Button>
+              ) : null}
             </div>
           </div>
         </DialogContent>
@@ -876,9 +1229,9 @@ function mergeGeneratedProject(baseProject: Project, generatedProject: Project):
   };
 }
 
-/** 원본 구성 유지 모드의 총 장수는 원본에서 읽어낸 섹션 수를 따르고, 기본 모드는 8장이다. */
+/** 원본 구성 유지 모드의 총 장수는 원본에서 읽어낸 섹션 수를 따르고, 기본 전체 구성은 S9 고시까지 9장이다. */
 function totalSectionsOf(project?: Project | null) {
-  if (project?.mode !== "preserve") return 8;
+  if (project?.mode !== "preserve") return 9;
   const fromServer = Number(project.sectionTotal);
   if (Number.isFinite(fromServer) && fromServer > 0) return Math.min(10, fromServer);
   const fromBlueprint = blueprintSectionNames(project).length;
@@ -1270,10 +1623,20 @@ function Dashboard({
 function Workspace(props: {
   selectedModel: Model;
   setSelectedModel: (model: Model) => void;
+  serverKeys: { openai: boolean; google: boolean; kie: boolean; kieNanoBanana: boolean };
+  hasUsableKey: (model: Model) => boolean;
   redesignMode: RedesignMode;
   setRedesignMode: (mode: RedesignMode) => void;
   channel: string;
   setChannel: (channel: string) => void;
+  targetAges: string[];
+  setTargetAges: (v: string[]) => void;
+  targetGenders: string[];
+  setTargetGenders: (v: string[]) => void;
+  targetSituations: string[];
+  setTargetSituations: (v: string[]) => void;
+  targetFree: string;
+  setTargetFree: (v: string) => void;
   count: number;
   setCount: (count: number) => void;
   ratio: string;
@@ -1288,14 +1651,31 @@ function Workspace(props: {
   productInputRef: React.RefObject<HTMLInputElement | null>;
   generating: boolean;
   onGenerate: () => void;
+  onGenerateSection: (sectionNumber: number) => Promise<void> | void;
+  singleSection: string;
+  hasBlueprint: boolean;
+  copyOverrideText: string;
+  setCopyOverrideText: (v: string) => void;
+  copyOverrideActive: boolean;
+  setCopyOverrideActive: (v: boolean) => void;
 }) {
   const {
     selectedModel,
     setSelectedModel,
+    serverKeys,
+    hasUsableKey,
     redesignMode,
     setRedesignMode,
     channel,
     setChannel,
+    targetAges,
+    setTargetAges,
+    targetGenders,
+    setTargetGenders,
+    targetSituations,
+    setTargetSituations,
+    targetFree,
+    setTargetFree,
     count,
     setCount,
     ratio,
@@ -1309,14 +1689,23 @@ function Workspace(props: {
     inputRef,
     productInputRef,
     generating,
-    onGenerate
+    onGenerate,
+    onGenerateSection,
+    singleSection,
+    hasBlueprint,
+    copyOverrideText,
+    setCopyOverrideText,
+    copyOverrideActive,
+    setCopyOverrideActive
   } = props;
 
   return (
     <section className="mx-auto max-w-xl">
       <Topbar eyebrow="리디자인 작업" />
 
-      <Card className="p-2">
+      <ModelPicker value={selectedModel} onChange={setSelectedModel} serverKeys={serverKeys} usable={hasUsableKey} />
+
+      <Card className="mt-3 p-2">
         <UploadArea
           inputRef={inputRef}
           files={files}
@@ -1346,8 +1735,8 @@ function Workspace(props: {
           </Disclosure>
 
           <Disclosure
-            title="생성 옵션"
-            summary={`${redesignModeLabel(redesignMode)} · ${models[selectedModel].label.replace("Google ", "")} · ${channel} · ${count === 1 ? "1장" : "전체"}`}
+            title="생성 옵션 (타겟 포함)"
+            summary={`${[targetAges.join("/"), targetGenders.join("/"), targetSituations.join("/")].filter(Boolean).join(" · ") || "타겟 미지정"} · ${redesignModeLabel(redesignMode)} · ${models[selectedModel].label.replace("Google ", "")} · ${channel} · ${count === 1 ? "1장" : "전체"}`}
           >
             <div className="grid gap-4">
               <div>
@@ -1360,15 +1749,9 @@ function Workspace(props: {
                 <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                   {redesignMode === "preserve"
                     ? "원본의 섹션 순서와 문구를 그대로 두고 디자인과 레이아웃만 새로 만듭니다. 장수도 원본 섹션 수를 그대로 따릅니다."
-                    : "원본의 사실은 지키면서 카피와 섹션 구성을 구매전환 흐름(히어로 → 문제공감 → 베네핏 → 근거 → FAQ)으로 다시 설계합니다."}
+                    : "원본의 사실은 지키면서 카피와 섹션 구성을 고객의 불편 → 해결 → 이득 흐름(히어로 → 문제 공감 → 생활 변화 → 해결 방식 → 근거 → 사용 장면)으로 다시 설계합니다."}
                 </p>
               </div>
-              <OptionGroup
-                label="이미지 생성 모델"
-                value={selectedModel}
-                options={[["openai", "OpenAI Image 2.0"], ["google", "Google Nano Banana 2"]]}
-                onChange={(value) => setSelectedModel(value as Model)}
-              />
               <OptionGroup
                 label="결과 장수"
                 value={String(count)}
@@ -1378,6 +1761,10 @@ function Workspace(props: {
                 onChange={(value) => setCount(Number(value))}
               />
               <OptionGroup label="출력 비율" value={ratio} options={[["9:16", "9:16"], ["1080×1920", "1080×1920"]]} onChange={setRatio} />
+              <div>
+                <label className="mb-2 block text-xs font-bold text-muted-foreground">타겟 고객 (선택 — 타겟 기반으로 문구·연출이 바뀝니다)</label>
+                <TargetOptionGroup ages={targetAges} genders={targetGenders} situations={targetSituations} free={targetFree} setAges={setTargetAges} setGenders={setTargetGenders} setSituations={setTargetSituations} setFree={setTargetFree} />
+              </div>
               <ChannelOptionGroup value={channel} onChange={setChannel} />
             </div>
           </Disclosure>
@@ -1388,6 +1775,71 @@ function Workspace(props: {
         {generating ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
         리디자인 생성
       </Button>
+      <div className="mt-3 rounded-2xl bg-muted/40 p-4">
+        <p className="text-xs font-bold text-muted-foreground">특정 섹션만 1장 생성 (확정된 카피·디자인 스타일 그대로 이어받기)</p>
+        <div className="mt-2 grid grid-cols-3 gap-2">
+          {[
+            [1, "히어로"],
+            [2, "문제 공감"],
+            [3, "생활 변화"],
+            [4, "해결 방식"],
+            [5, "근거·신뢰"],
+            [6, "사용법"],
+            [7, "사용 장면"],
+            [8, "배송·교환 안내"],
+            [9, "상품정보 고시"]
+          ].map(([num, label]) => {
+            const sectionKey = "S" + num;
+            const busy = singleSection === sectionKey;
+            return (
+              <button
+                key={num}
+                type="button"
+                disabled={generating}
+                title={hasBlueprint ? "확정된 카피·스타일로 이 섹션만 재생성합니다." : "먼저 생성을 1회 실행하면 카피·스타일을 이어받을 수 있습니다."}
+                className={cn(
+                  "flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-2xl bg-white px-2 py-2 text-center shadow-sm transition",
+                  busy ? "opacity-60" : "hover:bg-emerald-50/60",
+                  generating && "cursor-not-allowed opacity-40"
+                )}
+                onClick={() => onGenerateSection(Number(num))}
+              >
+                {busy ? <Loader2 className="size-4 animate-spin" /> : <span className="text-xs font-bold text-emerald-700">S{num}</span>}
+                <span className="text-[11px] leading-tight text-muted-foreground">{label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="mt-3 rounded-2xl bg-muted/40 p-4">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={copyOverrideActive}
+            onChange={(e) => setCopyOverrideActive(e.target.checked)}
+          />
+          <span className="text-xs font-bold text-muted-foreground">카피 직접 지정 (검수된 카피 JSON을 붙여넣으면 AI 분석을 건너뛰고 그 문구로 생성)</span>
+        </label>
+        {copyOverrideActive ? (
+          <textarea
+            value={copyOverrideText}
+            onChange={(e) => setCopyOverrideText(e.target.value)}
+            placeholder='{"sections": [{"section_id": "S1", "eyebrow": "라벨", "headline": "대제목", ... }]} 형식의 JSON을 붙여넣어주세요'
+            className="mt-2 min-h-32 w-full rounded-xl bg-white p-3 font-mono text-xs"
+            spellCheck={false}
+          />
+        ) : null}
+        {copyOverrideActive ? (
+          <p className={cn(
+            "mt-2 text-xs font-bold",
+            parseCopyOverride(copyOverrideText) ? "text-emerald-700" : "text-muted-foreground"
+          )}>
+            {parseCopyOverride(copyOverrideText)
+              ? "카피 JSON 확인 완료 — 생성 시 이 문구가 사용됩니다."
+              : "JSON 형식을 확인해주세요. 형식이 맞지 않으면 기존 AI 분석 카피로 생성됩니다."}
+          </p>
+        ) : null}
+      </div>
       {files.length === 0 ? (
         <p className="mt-2 text-center text-xs text-muted-foreground">기존 상세페이지를 올리면 생성할 수 있습니다.</p>
       ) : null}
@@ -1512,6 +1964,55 @@ function UploadArea({
   );
 }
 
+/** 정쓰님 요청(2026-10-31): 타겟 축 선택 UI — 나이·성별·상황 복수 선택 + 자유입력. */
+function TargetOptionGroup({
+  ages, genders, situations, free,
+  setAges, setGenders, setSituations, setFree
+}: {
+  ages: string[]; genders: string[]; situations: string[]; free: string;
+  setAges: (v: string[]) => void; setGenders: (v: string[]) => void; setSituations: (v: string[]) => void; setFree: (v: string) => void;
+}) {
+  const toggle = (list: string[], set: (v: string[]) => void, item: string) =>
+    set(list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
+  const ageOptions = ["10대", "20대", "30대", "40대", "50대", "60대+"];
+  const genderOptions = ["남성", "여성", "무관"];
+  const situationOptions = ["직장인", "주부", "아이가 있는 집", "1인 가구", "학생", "시니어", "운동/건강 관심", "반려동물 있는 집"];
+  const chip = (selected: boolean) =>
+    cn("min-h-9 rounded-2xl bg-white px-3 text-xs font-bold transition", selected ? "bg-emerald-600 text-white hover:bg-emerald-600" : "text-muted-foreground hover:bg-emerald-50/60");
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="mb-2 block text-xs font-bold text-muted-foreground">타겟 연령대 (복수 선택)</label>
+        <div className="flex flex-wrap gap-2">
+          {ageOptions.map((age) => (
+            <button key={age} type="button" className={chip(ages.includes(age))} onClick={() => toggle(ages, setAges, age)}>{age}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="mb-2 block text-xs font-bold text-muted-foreground">성별</label>
+        <div className="flex flex-wrap gap-2">
+          {genderOptions.map((g) => (
+            <button key={g} type="button" className={chip(genders.includes(g))} onClick={() => toggle(genders, setGenders, g)}>{g}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="mb-2 block text-xs font-bold text-muted-foreground">상황 / 라이프스타일 (복수 선택)</label>
+        <div className="flex flex-wrap gap-2">
+          {situationOptions.map((s) => (
+            <button key={s} type="button" className={chip(situations.includes(s))} onClick={() => toggle(situations, setSituations, s)}>{s}</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <label className="mb-2 block text-xs font-bold text-muted-foreground">상세 타겟 (자유입력, 예: 야근 많은 30대 남성 직장인)</label>
+        <Input value={free} onChange={(e) => setFree(e.target.value)} placeholder="비워두면 연령대·성별·상황 조합만 사용됩니다" />
+      </div>
+    </div>
+  );
+}
+
 function ChannelOptionGroup({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const [open, setOpen] = React.useState(false);
   const channels = [
@@ -1601,6 +2102,7 @@ function Results({
   setRolloutRequest,
   onToast,
   onSave,
+  hasUsableKey,
   onEditSection,
   onGenerateRest,
   generating,
@@ -1611,6 +2113,7 @@ function Results({
   setRolloutRequest: (request: string) => void;
   onToast: (message: string) => void;
   onSave: () => void;
+  hasUsableKey: (model: Model) => boolean;
   onEditSection: (sectionId: string, editRequest: string, model: Model) => void;
   onGenerateRest: () => void;
   generating: boolean;
@@ -1618,6 +2121,7 @@ function Results({
 }) {
   const [exporting, setExporting] = React.useState(false);
   const [viewerIndex, setViewerIndex] = React.useState<number | null>(null);
+  const [overlaySectionIndex, setOverlaySectionIndex] = React.useState<number | null>(null);
 
   if (!project) {
     return (
@@ -1646,8 +2150,10 @@ function Results({
       index={index}
       projectTitle={title}
       defaultModel={project.model}
+      hasUsableKey={hasUsableKey}
       onEditSection={onEditSection}
       onOpenViewer={() => setViewerIndex(index)}
+      onOpenOverlay={() => setOverlaySectionIndex(index)}
       editing={editingSectionId === section.id}
       disabled={generating}
     />
@@ -1661,7 +2167,8 @@ function Results({
     setExporting(true);
     try {
       const { buildSectionsZip, downloadBlob } = await import("@/lib/section-export");
-      const blob = await buildSectionsZip(downloadableSections, title);
+      const customerCore = (project?.analysis as { customer_core?: Record<string, string> } | undefined)?.customer_core;
+      const blob = await buildSectionsZip(downloadableSections, title, customerCore);
       downloadBlob(blob, `${sanitizeDownloadName(title)}.zip`);
       onToast(`${downloadableSections.length}장을 ZIP으로 저장했습니다.`);
     } catch (error) {
@@ -1674,7 +2181,8 @@ function Results({
   async function copyCopyMarkdown() {
     try {
       const { buildBlueprintMarkdown } = await import("@/lib/section-export");
-      await navigator.clipboard.writeText(buildBlueprintMarkdown(project?.sections || [], title));
+      const customerCore = (project?.analysis as { customer_core?: Record<string, string> } | undefined)?.customer_core;
+      await navigator.clipboard.writeText(buildBlueprintMarkdown(project?.sections || [], title, customerCore));
       onToast("카피를 마크다운으로 복사했습니다.");
     } catch {
       onToast("클립보드 복사에 실패했습니다. 브라우저 권한을 확인해주세요.");
@@ -1730,6 +2238,15 @@ function Results({
           projectTitle={title}
           onIndexChange={setViewerIndex}
           onClose={() => setViewerIndex(null)}
+        />
+      ) : null}
+
+      {overlaySectionIndex !== null && project.sections[overlaySectionIndex]?.imageUrl ? (
+        <TextOverlayEditor
+          sectionName={project.sections[overlaySectionIndex].name}
+          imageUrl={project.sections[overlaySectionIndex].imageUrl!}
+          copy={project.sections[overlaySectionIndex].copy}
+          onClose={() => setOverlaySectionIndex(null)}
         />
       ) : null}
     </section>
@@ -1854,15 +2371,41 @@ function ImageViewer({
   );
 }
 
+/**
+ * 정쓰님 요청(2026-11-04): 검수된 카피 JSON을 직접 지정하면 AI 분석을 건너뛰고 그 카피로 생성한다.
+ * 지원 형식: {sections:[...]} / {analysis:{sections:[...]}} / sections 배열 자체.
+ * 형식이 맞지 않으면 null을 반환해 기존 분석 카피로 진행한다.
+ */
+function parseCopyOverride(raw: string): unknown | null {
+  const text = raw.trim();
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text);
+    const candidates = [
+      parsed,
+      parsed.analysis,
+      parsed.blueprint,
+      Array.isArray(parsed) ? { sections: parsed } : null
+    ].filter(Boolean);
+    for (const candidate of candidates) {
+      if (Array.isArray(candidate.sections) && candidate.sections.length > 0) return candidate;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 const plannedSections: Array<[string, string]> = [
   ["S1", "히어로"],
   ["S2", "문제 공감"],
-  ["S3", "베네핏 3개"],
-  ["S4", "USP 차별점"],
+  ["S3", "생활 변화"],
+  ["S4", "해결 방식"],
   ["S5", "근거·신뢰"],
   ["S6", "사용법"],
-  ["S7", "후기"],
-  ["S8", "배송·교환 안내"]
+  ["S7", "사용 장면"],
+  ["S8", "배송·교환 안내"],
+  ["S9", "상품정보 고시"]
 ];
 
 /** 아직 만들지 않은 섹션을 이어서 생성하는 패널. */
@@ -1937,8 +2480,10 @@ function SectionResultCard({
   index,
   projectTitle,
   defaultModel,
+  hasUsableKey,
   onEditSection,
   onOpenViewer,
+  onOpenOverlay,
   editing,
   disabled
 }: {
@@ -1946,8 +2491,10 @@ function SectionResultCard({
   index: number;
   projectTitle: string;
   defaultModel: Model;
+  hasUsableKey: (model: Model) => boolean;
   onEditSection: (sectionId: string, editRequest: string, model: Model) => void;
   onOpenViewer: () => void;
+  onOpenOverlay: () => void;
   editing: boolean;
   disabled: boolean;
 }) {
@@ -2018,17 +2565,48 @@ function SectionResultCard({
 
       <div className="flex items-center justify-between gap-2 px-4 py-2.5">
         <span className="min-w-0 truncate text-xs font-semibold" title={section.purpose}>{shortName}</span>
-        <button
-          type="button"
-          className={cn(
-            "shrink-0 rounded-full px-2.5 py-1 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground",
-            editOpen && "bg-muted text-foreground"
-          )}
-          onClick={() => setEditOpen((current) => !current)}
-        >
-          수정
-        </button>
+        <div className="flex shrink-0 items-center gap-1">
+          {activeRevision?.imageUrl ? (
+            <button
+              type="button"
+              className="shrink-0 rounded-full px-2.5 py-1 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground"
+              onClick={onOpenOverlay}
+            >
+              문구수정
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={cn(
+              "shrink-0 rounded-full px-2.5 py-1 text-xs font-bold text-muted-foreground transition hover:bg-muted hover:text-foreground",
+              editOpen && "bg-muted text-foreground"
+            )}
+            onClick={() => setEditOpen((current) => !current)}
+          >
+            수정
+          </button>
+        </div>
       </div>
+
+      {section.customer?.pain || section.customer?.solution || section.customer?.gain || section.contract?.buyer_question ? (
+        <details className="border-t px-4 py-2 text-xs">
+          <summary className="cursor-pointer select-none font-semibold text-muted-foreground">고객 인사이트</summary>
+          <div className="mt-1.5 grid gap-1 text-muted-foreground">
+            {section.contract?.buyer_question ? (
+              <p><span className="font-semibold text-foreground">질문</span> {section.contract.buyer_question}</p>
+            ) : null}
+            {section.customer?.pain ? (
+              <p><span className="font-semibold text-foreground">불편</span> {section.customer.pain}</p>
+            ) : null}
+            {section.customer?.solution ? (
+              <p><span className="font-semibold text-foreground">해결</span> {section.customer.solution}</p>
+            ) : null}
+            {section.customer?.gain ? (
+              <p><span className="font-semibold text-foreground">이득</span> {section.customer.gain}</p>
+            ) : null}
+          </div>
+        </details>
+      ) : null}
 
       {editOpen ? (
         <div className="grid gap-2 bg-muted/40 p-3">
@@ -2051,13 +2629,27 @@ function SectionResultCard({
             ))}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              className="text-[11px] font-bold text-muted-foreground underline-offset-2 hover:underline"
-              onClick={() => setEditModel((current) => (current === "openai" ? "google" : "openai"))}
-            >
-              {models[editModel].label}
-            </button>
+            <div className="flex flex-wrap gap-1">
+              {modelOrder.map((model) => {
+                const keyOk = hasUsableKey(model);
+                return (
+                  <button
+                    key={model}
+                    type="button"
+                    disabled={!keyOk}
+                    title={keyOk ? modelDescriptions[model] : "API 키가 없어 사용할 수 없습니다."}
+                    className={cn(
+                      "rounded-full px-2.5 py-1 text-[11px] font-bold transition",
+                      editModel === model ? "bg-foreground text-background" : "bg-white text-muted-foreground hover:text-emerald-700",
+                      !keyOk && "cursor-not-allowed opacity-40"
+                    )}
+                    onClick={() => setEditModel(model)}
+                  >
+                    {models[model].label}
+                  </button>
+                );
+              })}
+            </div>
             <Button
               type="button"
               size="sm"
@@ -2189,7 +2781,7 @@ function Topbar({ eyebrow, title, children }: { eyebrow: string; title?: string;
 
 function estimateGenerationSeconds(model: Model, count: number) {
   const setupSeconds = 24;
-  const perImageSeconds = model === "google" ? 78 : 65;
+  const perImageSeconds = model === "google" ? 78 : model === "kie" || model === "kie-nano-banana" || model === "kie-gpt-image-2-5" ? 90 : 65;
   return setupSeconds + Math.max(1, count) * perImageSeconds;
 }
 

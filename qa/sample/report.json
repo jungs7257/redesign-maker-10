@@ -1,0 +1,339 @@
+{
+  "version": "1.0.0",
+  "sections": 8,
+  "images": 8,
+  "image_total_mb": 18.33,
+  "counts": {
+    "P0": 20,
+    "P1": 16,
+    "P2": 0
+  },
+  "blocked": true,
+  "verdict": "FAIL",
+  "issues": [
+    {
+      "rule": "L001",
+      "severity": "P0",
+      "section": "S1",
+      "quote": "제품명에 빨아쓰는 표기",
+      "field": "point:빨아쓰기",
+      "message": "기획/제작 메모가 고객 카피로 노출됨 ('제품명에')",
+      "fix": "고객이 얻는 결과로 다시 쓰세요. 예: '배치 연출' -> '문 앞에 두면 첫 발이 바로 닿습니다'"
+    },
+    {
+      "rule": "L001",
+      "severity": "P0",
+      "section": "S2",
+      "quote": "타일 바닥 위 배치 연출",
+      "field": "point:욕실앞",
+      "message": "기획/제작 메모가 고객 카피로 노출됨 ('배치 연출')",
+      "fix": "고객이 얻는 결과로 다시 쓰세요. 예: '배치 연출' -> '문 앞에 두면 첫 발이 바로 닿습니다'"
+    },
+    {
+      "rule": "L001",
+      "severity": "P0",
+      "section": "S7",
+      "quote": "샤워 공간 옆 배치 연출",
+      "field": "point:욕실옆",
+      "message": "기획/제작 메모가 고객 카피로 노출됨 ('배치 연출')",
+      "fix": "고객이 얻는 결과로 다시 쓰세요. 예: '배치 연출' -> '문 앞에 두면 첫 발이 바로 닿습니다'"
+    },
+    {
+      "rule": "L001",
+      "severity": "P0",
+      "section": "S7",
+      "quote": "욕실 슬리퍼 옆 사용 컷",
+      "field": "point:슬리퍼옆",
+      "message": "기획/제작 메모가 고객 카피로 노출됨 ('사용 컷')",
+      "fix": "고객이 얻는 결과로 다시 쓰세요. 예: '배치 연출' -> '문 앞에 두면 첫 발이 바로 닿습니다'"
+    },
+    {
+      "rule": "L001",
+      "severity": "P0",
+      "section": "S8",
+      "quote": "52×32cm 상세 표기",
+      "field": "point:사이즈",
+      "message": "기획/제작 메모가 고객 카피로 노출됨 ('상세 표기')",
+      "fix": "고객이 얻는 결과로 다시 쓰세요. 예: '배치 연출' -> '문 앞에 두면 첫 발이 바로 닿습니다'"
+    },
+    {
+      "rule": "L003",
+      "severity": "P0",
+      "section": "S2",
+      "quote": "사워 후 맨발 사용 장면",
+      "field": "point:젖은발",
+      "message": "오타: '사워' -> '샤워'",
+      "fix": "'샤워'로 교체"
+    },
+    {
+      "rule": "L003",
+      "severity": "P0",
+      "section": "S3",
+      "quote": "사워 후 첫 발을 매트 위로",
+      "field": "point:바로착지",
+      "message": "오타: '사워' -> '샤워'",
+      "fix": "'샤워'로 교체"
+    },
+    {
+      "rule": "L003",
+      "severity": "P0",
+      "section": "S5",
+      "quote": "100% 자연 소재로 안전적인 사용감",
+      "field": "point:100% 자연 소재",
+      "message": "오타: '안전적인' -> '안전한'",
+      "fix": "'안전한'로 교체"
+    },
+    {
+      "rule": "L003",
+      "severity": "P0",
+      "section": "S6",
+      "quote": "발으면 욕실 앞에 펼치면 됩니다",
+      "field": "headline",
+      "message": "오타: '발으면' -> '받으면'",
+      "fix": "'받으면'로 교체"
+    },
+    {
+      "rule": "L003",
+      "severity": "P0",
+      "section": "S6",
+      "quote": "아이 사워 동선에 맞춰 놓고 바로 사용하세요",
+      "field": "description",
+      "message": "오타: '사워' -> '샤워'",
+      "fix": "'샤워'로 교체"
+    },
+    {
+      "rule": "L003",
+      "severity": "P0",
+      "section": "S7",
+      "quote": "사워 뒤 첫 발이 닿는 그 자리입니다",
+      "field": "headline",
+      "message": "오타: '사워' -> '샤워'",
+      "fix": "'샤워'로 교체"
+    },
+    {
+      "rule": "L004",
+      "severity": "P0",
+      "section": "S5",
+      "quote": "빠르게 마르고 쾌적하게 유지",
+      "field": "headline",
+      "message": "근거 없는 효과 주장 1건 (빠르게 마르) - 문서 내 시험/인증 근거 없음",
+      "fix": "성적서·측정 근거를 넣거나 '~편입니다' 서술형으로 완화하세요"
+    },
+    {
+      "rule": "L004",
+      "severity": "P0",
+      "section": "S5",
+      "quote": "규조토 특유의 미세기공이 수분을 순간 흡수하고 빠르게 건조시켜 보송함을 오래 유지합니다",
+      "field": "description",
+      "message": "근거 없는 효과 주장 2건 (순간 흡수, 빠르게 건조) - 문서 내 시험/인증 근거 없음",
+      "fix": "성적서·측정 근거를 넣거나 '~편입니다' 서술형으로 완화하세요"
+    },
+    {
+      "rule": "L004",
+      "severity": "P0",
+      "section": "S5",
+      "quote": "물기를 순간 흡수하는 미세기공 구조",
+      "field": "point:순간 흡수",
+      "message": "근거 없는 효과 주장 1건 (순간 흡수) - 문서 내 시험/인증 근거 없음",
+      "fix": "성적서·측정 근거를 넣거나 '~편입니다' 서술형으로 완화하세요"
+    },
+    {
+      "rule": "L004",
+      "severity": "P0",
+      "section": "S5",
+      "quote": "냄새 걱정 최소화, 먼지 발생 최소화",
+      "field": "point:냄새 걱정 최소화",
+      "message": "근거 없는 효과 주장 2건 (먼지 발생 최소화, 냄새 걱정 최소화) - 문서 내 시험/인증 근거 없음",
+      "fix": "성적서·측정 근거를 넣거나 '~편입니다' 서술형으로 완화하세요"
+    },
+    {
+      "rule": "L006",
+      "severity": "P0",
+      "section": "-",
+      "quote": "규조토 / 패브릭 + '100%' 동시 사용",
+      "field": "document",
+      "message": "소재 이중 주장: 100% 단정과 복수 소재(규조토, 패브릭)가 함께 쓰임",
+      "fix": "실물 구조를 확인해 하나로 정리하세요. 예: '규조토 성분을 담은 패브릭'"
+    },
+    {
+      "rule": "L007",
+      "severity": "P0",
+      "section": "S4",
+      "quote": "일반 상세페이지",
+      "field": "comparison",
+      "message": "비교 대상이 제품이 아님 ('일반 상세페이지') — 비교광고 요건 불충족",
+      "fix": "비교 대상은 '일반 규조토 매트' 같은 실제 제품 카테고리로 바꾸고, 비교 축을 1개로 고정하세요"
+    },
+    {
+      "rule": "L008",
+      "severity": "P0",
+      "section": "-",
+      "quote": "-",
+      "field": "notice",
+      "message": "상품정보 제공고시 섹션이 없음",
+      "fix": "재질/크기/제조국/제조자/품질보증/A/S/취급 주의를 담은 표를 추가하세요"
+    },
+    {
+      "rule": "L012",
+      "severity": "P0",
+      "section": "S7",
+      "quote": "후기",
+      "field": "label",
+      "message": "리뷰 0건인데 '후기' 라벨 사용 — 후기로 오인될 수 있음",
+      "fix": "라벨을 '사용 장면' 또는 '이렇게 씁니다'로 변경하세요"
+    },
+    {
+      "rule": "L023",
+      "severity": "P0",
+      "section": "S5",
+      "quote": "근 규조토 발매트의 원리",
+      "field": "section_name",
+      "message": "렌더 버그 의심: 섹션 제목 앞에 라벨 글자가 붙어 나온 렌더 버그",
+      "fix": "제목 조립부(라벨 + 제목)에서 앞 글자가 붙는지 확인하세요"
+    },
+    {
+      "rule": "L005",
+      "severity": "P1",
+      "section": "S4",
+      "quote": "100% 자연 규조토 표기 (일반 상세페이지와 비교)",
+      "field": "point:규조토",
+      "message": "절대 표현 (100%) - 근거 없이 쓰면 표시광고 리스크",
+      "fix": "수치 근거를 명시하거나 '~에 가깝습니다' 수준으로 낮추세요"
+    },
+    {
+      "rule": "L005",
+      "severity": "P1",
+      "section": "S5",
+      "quote": "100% 자연 소재로 안전적인 사용감",
+      "field": "point:100% 자연 소재",
+      "message": "절대 표현 (100%) - 근거 없이 쓰면 표시광고 리스크",
+      "fix": "수치 근거를 명시하거나 '~에 가깝습니다' 수준으로 낮추세요"
+    },
+    {
+      "rule": "L010",
+      "severity": "P1",
+      "section": "shipping",
+      "quote": "-",
+      "field": "shipping",
+      "message": "배송/교환/반품 실값 누락 (배송비, 반품)",
+      "fix": "배송비·반품비·교환비·신청 기간을 숫자로 적으세요"
+    },
+    {
+      "rule": "L011",
+      "severity": "P1",
+      "section": "shipping",
+      "quote": "주문 전 확인",
+      "field": "shipping",
+      "message": "조건을 회피하는 문구 ('주문 전 확인')",
+      "fix": "구매 결정을 미루지 말고 실제 조건을 숫자로 제시하세요"
+    },
+    {
+      "rule": "L011",
+      "severity": "P1",
+      "section": "shipping",
+      "quote": "판매 조건 기준",
+      "field": "shipping",
+      "message": "조건을 회피하는 문구 ('판매 조건 기준')",
+      "fix": "구매 결정을 미루지 말고 실제 조건을 숫자로 제시하세요"
+    },
+    {
+      "rule": "L014",
+      "severity": "P1",
+      "section": "S1",
+      "quote": "아이 샤워 후 / 젖은 물기가 / 걱정된다면",
+      "field": "headline",
+      "message": "헤드라인이 조건절('된다면')로 끝나 결론이 없음",
+      "fix": "3번째 줄을 결과 문장으로 닫으세요. 예: '...걱정된다면' -> '...매트 하나로 끝납니다'"
+    },
+    {
+      "rule": "L014",
+      "severity": "P1",
+      "section": "S2",
+      "quote": "씻긴 뒤가 / 진짜 시작인 / 집이라면",
+      "field": "headline",
+      "message": "헤드라인이 조건절('이라면')로 끝나 결론이 없음",
+      "fix": "3번째 줄을 결과 문장으로 닫으세요. 예: '...걱정된다면' -> '...매트 하나로 끝납니다'"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "01_히어로.png",
+      "field": "image",
+      "message": "이미지 1장 2.32MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "02_문제공감.png",
+      "field": "image",
+      "message": "이미지 1장 2.92MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "03_베네핏3개.png",
+      "field": "image",
+      "message": "이미지 1장 2.55MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "04_USP차별점.png",
+      "field": "image",
+      "message": "이미지 1장 2.05MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "05_근거_신뢰.png",
+      "field": "image",
+      "message": "이미지 1장 1.91MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "06_사용법.png",
+      "field": "image",
+      "message": "이미지 1장 2.54MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "07_후기카드.png",
+      "field": "image",
+      "message": "이미지 1장 2.18MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L019",
+      "severity": "P1",
+      "section": "-",
+      "quote": "08_배송·교환안내.png",
+      "field": "image",
+      "message": "이미지 1장 1.88MB — 상한 1.0MB 초과",
+      "fix": "WebP q82로 변환하세요 (보통 1/4 크기)"
+    },
+    {
+      "rule": "L021",
+      "severity": "P1",
+      "section": "-",
+      "quote": "8장 18.33MB",
+      "field": "image",
+      "message": "산출물 총 용량 18.33MB — 상한 3.0MB 초과",
+      "fix": "WebP 변환 + 섹션 분할 유지, 3MB 이하로"
+    }
+  ]
+}

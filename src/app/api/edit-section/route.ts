@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { generateKieImage, generateKieImage25, generateKieNanoBanana, KIE_GPT_IMAGE_MODEL, KIE_NANO_BANANA_MODEL } from "@/lib/kie";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -6,21 +7,36 @@ export const maxDuration = 300;
 const OPENAI_IMAGE_MODEL = "gpt-image-2-2026-04-21";
 const GOOGLE_NANO_BANANA_2_MODEL = "gemini-3.1-flash-image";
 
-type Provider = "openai" | "google";
+type Provider = "openai" | "google" | "kie" | "kie-nano-banana" | "kie-gpt-image-2-5" | "kie-gpt-image-2-5-sunburst" | "openai-direct";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const provider: Provider = body.model === "google" ? "google" : "openai";
+    const provider: Provider = body.model === "google"
+      ? "google"
+      : body.model === "kie"
+        ? "kie"
+        : body.model === "kie-nano-banana"
+          ? "kie-nano-banana"
+          : body.model === "kie-gpt-image-2-5"
+            ? "kie-gpt-image-2-5"
+            : body.model === "kie-gpt-image-2-5-sunburst"
+              ? "kie-gpt-image-2-5-sunburst"
+            : body.model === "openai-direct"
+              ? "openai-direct"
+              : "openai";
     const image = parseDataUrl(String(body.imageUrl || ""));
     const requestText = String(body.request || "");
     const section = body.section || {};
     const project = body.project || {};
     const openaiKey = String(body.openaiKey || "");
     const googleKey = String(body.googleKey || "");
-    const apiKey = provider === "google" ? googleKey : openaiKey;
+    // 방식 B: 브라우저 키가 없으면 서버 키로 대체한다.
+    const apiKey = provider === "google"
+      ? (process.env.KIE_API_KEY || googleKey || process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY || "")
+      : (openaiKey || process.env.OPENAI_API_KEY || "");
 
-    if (!apiKey) {
+    if (!apiKey && provider !== "kie" && provider !== "kie-nano-banana" && provider !== "kie-gpt-image-2-5" && provider !== "kie-gpt-image-2-5-sunburst") {
       return NextResponse.json(
         { error: provider === "google" ? "Google Nano Banana 2 API 키가 필요합니다." : "OpenAI Image 2.0 API 키가 필요합니다." },
         { status: 400 }
@@ -39,6 +55,8 @@ export async function POST(request: NextRequest) {
       `프로젝트: ${project.title || "상세페이지 리디자인"}`,
       `판매 채널: ${project.channel || "스마트스토어"}`,
       `이 섹션이 맡은 역할(레이아웃 참고용이며 글자로 그리지 않는다): ${section.purpose || ""}`,
+      `이 섹션이 답하는 고객 질문(연출 참고용이며 글자로 그리지 않는다): ${section.contract?.buyer_question || ""}`,
+      `이 섹션에서 보여줄 고객 감정(연출 참고용이며 글자로 그리지 않는다): ${section.customer?.pain || section.customer?.gain || ""}`,
       `사용자 수정 요청: ${requestText}`,
       "브랜드명 금지 규칙: '한이룸', '한이룸의', '한이룸 스킨', 'HANEERUM', 'Haneerum', 'HR'은 서비스명 또는 도구명일 뿐이며 제품 브랜드가 아니다. 이 단어들을 이미지 안의 제품명, 브랜드명, 로고, 라벨, 헤드라인, 후기, FAQ, CTA, 패키지 텍스트로 절대 사용하지 않는다.",
       "브랜드 사용 규칙: 제품 브랜드명과 제품명은 첨부된 이미지와 프로젝트 원본에서 확인되는 이름만 사용한다. 원본에서 확인되지 않는 새 브랜드명, 새 제품명, 새 로고를 만들지 않는다.",
@@ -60,7 +78,15 @@ export async function POST(request: NextRequest) {
 
     const edited = provider === "google"
       ? await editWithGoogle({ apiKey, prompt, image })
-      : await editWithOpenAI({ apiKey, prompt, image });
+      : provider === "kie"
+        ? await generateKieImage({ prompt, references: [{ name: "section.png", mimeType: image.mimeType, buffer: image.buffer }], ratio: "9:16" })
+        : provider === "kie-nano-banana"
+          ? await generateKieNanoBanana({ prompt, references: [{ name: "section.png", mimeType: image.mimeType, buffer: image.buffer }], ratio: "9:16" })
+          : provider === "kie-gpt-image-2-5"
+            ? await generateKieImage25({ prompt, references: [{ name: "section.png", mimeType: image.mimeType, buffer: image.buffer }], ratio: "9:16", quality: "flare" })
+          : provider === "kie-gpt-image-2-5-sunburst"
+            ? await generateKieImage25({ prompt, references: [{ name: "section.png", mimeType: image.mimeType, buffer: image.buffer }], ratio: "9:16", quality: "sunburst" })
+            : await editWithOpenAI({ apiKey, prompt, image });
 
     return NextResponse.json({
       imageUrl: `data:${edited.mimeType};base64,${edited.buffer.toString("base64")}`,

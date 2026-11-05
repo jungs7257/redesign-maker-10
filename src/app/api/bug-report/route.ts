@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
     reporterEmail,
     context: {
       ...sanitizeContext(body.context),
-      product: "한이룸의 상세페이지 리디자인 마법사 1.5",
+      product: "쩡스하우스 상세페이지 리디자인 마법사",
       userAgent: cleanLine(request.headers.get("user-agent"), 320) || undefined
     },
     recentEvents: []
