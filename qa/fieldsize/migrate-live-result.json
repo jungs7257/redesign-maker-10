@@ -1,0 +1,22 @@
+{
+ "api": "http://localhost:3002/redesign/15/api/detail-data",
+ "sections": 10,
+ "htmlIdentical": true,
+ "htmlBytes": 7269,
+ "badgesPreserved": true,
+ "fieldsAddedByMigration": [],
+ "heroBadgesBefore": [
+  [
+   "ㅓㅏㅓㅏㅇㅁㄹㅇㅁㅓㅏㅇㄹㅇㄹ",
+   "ㅇㄻㅇㄻㅇㄻ",
+   "ㅇㄹㅇㅇㄻ"
+  ]
+ ],
+ "heroBadgesAfter": [
+  [
+   "ㅓㅏㅓㅏㅇㅁㄹㅇㅁㅓㅏㅇㄹㅇㄹ",
+   "ㅇㄻㅇㄻㅇㄻ",
+   "ㅇㄹㅇㅇㄻ"
+  ]
+ ]
+}

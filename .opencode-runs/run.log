@@ -1,0 +1,139 @@
+[0m
+> build · glm-5.3
+[0m→ [0mRead . 
+[0m→ [0mRead /home/jungs7257/.openclaw/workspace/media/inbound/openclaw-staged-6bf0df88-f6b2-4e0a-a552-3bd2070b4270/input-HANDOFF_step3_fixes---14ab80b6-24ea-4f7f-a0ce-c8682d541ac8.md 
+> build · glm-5.3
+HANDOFF 문서를 읽었습니다. 이제 프로젝트 구조와 핵심 파일들을 확인하겠습니다.
+[0m→ [0mRead src 
+[0m→ [0mRead src/components/detail-builder.tsx 
+[0m$ [0mgit log --oneline -5 && git status --short
+f0bbead feat: copy_lint v1.2(섹션 계약·고객 코어) + G1 검수 게이트 + 문구수정 오버레이 편집기
+8006a23 fix: 원본 페이지를 베끼지 않도록 첨부 이미지의 역할을 명시
+5b54e18 fix: 이미지 프롬프트에서 섹션 이름 제거, 한글 철자 정확도 규칙 추가
+8ead812 fix: 지시문이 이미지에 그려지던 사고와 원본 구성 유지 모드 섹션 분할 불안정
+84acb1a fix: preserve 프롬프트에 남아 있던 말투 금지 규칙 제거
+ M package-lock.json
+ M package.json
+ M src/components/redesign-wizard.tsx
+ M src/components/ui/button.tsx
+?? .opencode-runs/
+?? HANDOFF_step3_fixes.md
+?? src/components/detail-builder.tsx
+> build · glm-5.3
+`detail-builder.tsx`를 읽었습니다. 벌써 F9의 원인 후보가 보입니다(미리보기 요소에 `id="builder-preview-sheet"`가 없음). 나머지 구조를 확인하겠습니다.
+[0m→ [0mRead src/app 
+[0m$ [0mcat package.json && ls node_modules/html-to-image 2>/dev/null || echo "NO html-to-image in node_modules"
+{
+  "name": "hanirum-detail-page-redesign-wizard",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "dev:local": "next dev -p 3002",
+    "build": "next build",
+    "start": "next start",
+    "deploy:preview": "vercel deploy -y --scope irums-projects-1428d2a1",
+    "deploy:prod": "vercel deploy --prod -y --scope irums-projects-1428d2a1",
+    "publish": "npm run build && npm run deploy:prod",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "class-variance-authority": "latest",
+    "clsx": "latest",
+    "html-to-image": "^1.11.13",
+    "jszip": "^3.10.1",
+    "lucide-react": "latest",
+    "next": "latest",
+    "openai": "^6.34.0",
+    "pdfjs-dist": "^5.6.205",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwind-merge": "latest"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "tailwindcss": "latest",
+    "typescript": "latest"
+  }
+}
+LICENSE
+README.md
+dist
+es
+lib
+package.json
+src
+[0m$ [0mgit diff --stat && cat CLAUDE.md 2>/dev/null | head -50
+package-lock.json                  | 7 +++++++
+ package.json                       | 1 +
+ src/components/redesign-wizard.tsx | 9 +++++++--
+ src/components/ui/button.tsx       | 1 +
+ 4 files changed, 16 insertions(+), 2 deletions(-)
+# Claude Code Collaboration Rules
+
+이 파일은 Claude Code가 `한이룸의 상세페이지 리디자인 마법사 1.5` 프로젝트에서 작업할 때 따라야 하는 공동작업 규칙입니다.
+
+## 1. 프로젝트 정체성
+
+- 서비스명은 반드시 `한이룸의 상세페이지 리디자인 마법사 1.5`이다.
+- 1.5의 철학은 `간단, 심플, 직관적`이다. 기능과 옵션을 늘리지 않고 핵심 결과 품질에 집중한다.
+- 이 앱은 기존 상세페이지 이미지/PDF를 분석해서 구매전환 중심 상세페이지로 리디자인하는 도구다.
+- "상세페이지 마법사", "상세페이지 마법사 2.0"처럼 다른 제품명으로 바꾸지 않는다.
+- 회원/관리자/회원정보 삭제 기능은 이 프로젝트 범위가 아니다.
+- 사용자에게는 한국어로 답하고, 사용자는 `한이룸님`으로 부른다.
+
+## 2. 개발/배포 운영
+
+기본 작업은 로컬에서만 한다.
+
+```bash
+npm run dev:local
+```
+
+로컬 확인 주소:
+
+```text
+http://localhost:3002/
+```
+
+라이브 발행 전 검증:
+
+```bash
+npm run build
+```
+
+Production 배포는 사용자가 명시적으로 `발행`, `라이브 반영`, `prod 배포`, `배포해줘`라고 요청할 때만 한다.
+
+```bash
+npm run publish
+```
+
+라이브 주소:
+
+```text
+https://wizard.irumai.kr/redesign/15
+```
+
+1.5는 Vercel 프로젝트 `redesign-wizard-15`, basePath `/redesign/15`에서 서비스한다.
+1.0은 같은 저장소의 `v1.0` 태그이며 별도 프로젝트 `hanirum-redesign-wizard`에서 그대로 유지된다. 두 배포를 섞지 않는다.
+클라이언트에서 API를 호출하거나 정적 자산을 링크할 때는 `withBasePath()`를 반드시 거친다.
+
+로컬 브라우저 IndexedDB/localStorage에 저장된 작업 결과는 Production으로 자동 동기화되지 않는다.
+> build · glm-5.3
+[0m→ [0mRead src/app/page.tsx 
+[0m→ [0mRead src/app/api 
+> build · glm-5.3
+[0m$ [0mgrep -n "DetailBuilder\|detail-builder" src/components/redesign-wizard.tsx | head -20
+26:import { DetailBuilder } from "@/components/detail-builder";
+954:          <DetailBuilder />
+[0m$ [0mcurl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:3002/redesign/15 ; echo ; ps aux | grep -i "next" | grep -v grep | head -5
+200
+jungs72+ 1246463  0.0  0.0   2812  1776 ?        S    10월26   0:00 sh -c next start -p 8810 -H 0.0.0.0
+jungs72+ 1246464  0.0  0.1 1862340 27444 ?       Sl   10월26   0:19 next-server (v15.5.28)
+jungs72+ 2416011  0.0  0.0   2812  1884 ?        S    14:44   0:00 sh -c next start -p 3002
+jungs72+ 2416012  0.0  0.7 3210388 118860 ?      Sl   14:44   0:02 next-server (v16.2.4)
+> build · glm-5.3

@@ -1,0 +1,140 @@
+{
+  "brand": "",
+  "name": "ㅇㄹㅇㅁㅇㄹ",
+  "tagline": "ㅊㅍㅊ",
+  "kind": "living",
+  "sections": [
+    {
+      "type": "hero",
+      "image": " http://100.113.154.123:8081/input/통1.png",
+      "title": "물기때문에 고생이였죠 ",
+      "sub": "알알달아라",
+      "notice": "ㄴㅇㄴㅇㄴㅇㄴ",
+      "badges": [
+        "111",
+        "ㄴㅇㄴㅇㄴ",
+        "ㅎㅇㅁㅇㄻ"
+      ],
+      "fontSize": 26,
+      "fieldSizes": {
+        "sub": 34
+      }
+    },
+    {
+      "type": "problem",
+      "title": "이런장면ㅇ",
+      "body": "ㅇㄻㅇㄻㅇㄹ",
+      "image": "http://100.113.154.123:8081/input/통2-1.png",
+      "fontSize": 26
+    },
+    {
+      "type": "detail",
+      "images": [
+        "http://100.113.154.123:8081/input/통2.png",
+        "http://100.113.154.123:8081/input/통3.png"
+      ],
+      "captions": [
+        "",
+        ""
+      ]
+    },
+    {
+      "type": "usp",
+      "items": [
+        "ㅇㄻㅇㄻ",
+        "ㅇㄻㅇㄻ",
+        "ㅁㅇㄻㅇㄹ"
+      ],
+      "title": "ㅏㅓㅏㅓㅏㅓㅏㅓ"
+    },
+    {
+      "type": "evidence",
+      "image": "",
+      "w": "ㅇㄻㅇㄹ",
+      "d": "ㅁㄹㅇㄹ",
+      "h": "ㅇㄻ",
+      "weight": "ㅇㄻㅇㄹ",
+      "colors": "ㅁㄹㅇㄹ",
+      "material": "ㅇㄻㅇ",
+      "unit": "cm"
+    },
+    {
+      "type": "notice",
+      "caption": "제품 정보",
+      "rows": [
+        [
+          "구성품",
+          ""
+        ],
+        [
+          "조립 여부",
+          ""
+        ],
+        [
+          "관리 방법",
+          ""
+        ],
+        [
+          "사용 환경",
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "notice",
+      "title": "배송 안내",
+      "lines": [
+        "ㅁㅇㄻㅇㄻㅇㄻ"
+      ],
+      "fee": "",
+      "island": "",
+      "leadTime": ""
+    },
+    {
+      "type": "notice",
+      "title": "주의사항",
+      "lines": [
+        ""
+      ]
+    },
+    {
+      "type": "notice",
+      "title": "무상 서비스",
+      "lines": [
+        "테스트"
+      ],
+      "asPeriod": "1",
+      "asTerms": "제조사 결함"
+    },
+    {
+      "type": "notice",
+      "caption": "Product Info.",
+      "rows": [
+        [
+          "품명",
+          "dfa"
+        ],
+        [
+          "소재",
+          "dfa"
+        ],
+        [
+          "색상",
+          "dfa"
+        ],
+        [
+          "크기",
+          "766"
+        ],
+        [
+          "제조국",
+          "dfw"
+        ],
+        [
+          "A/S 책임자",
+          "adge"
+        ]
+      ]
+    }
+  ]
+}

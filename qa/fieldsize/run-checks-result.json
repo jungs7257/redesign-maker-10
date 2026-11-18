@@ -1,0 +1,152 @@
+{
+ "total": 29,
+ "passed": 29,
+ "failed": [],
+ "results": [
+  {
+   "name": "byte-identity[current-data]",
+   "ok": true,
+   "detail": "html = / wrapped = / migrate = / idempotent = (7269B)"
+  },
+  {
+   "name": "byte-identity[legacy]",
+   "ok": true,
+   "detail": "html = / wrapped = / migrate = / idempotent = (6846B)"
+  },
+  {
+   "name": "byte-identity[sizemix]",
+   "ok": true,
+   "detail": "html = / wrapped = / migrate = / idempotent = (7895B)"
+  },
+  {
+   "name": "byte-identity[defaults]",
+   "ok": true,
+   "detail": "html = / wrapped = / migrate = / idempotent = (0B)"
+  },
+  {
+   "name": "byte-identity[defaultDoc()]",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "empty fieldSizes == no fieldSizes",
+   "ok": true,
+   "detail": "빈 객체는 마이그레이션에서 키가 사라져야 함: [null,null,null,null,null,null,null,null,null,null]"
+  },
+  {
+   "name": "badges-split[\"A · B · C\"]",
+   "ok": true,
+   "detail": "→ [\"A\",\"B\",\"C\"]"
+  },
+  {
+   "name": "badges-split[\"A·B·C\"]",
+   "ok": true,
+   "detail": "→ [\"A\",\"B\",\"C\"]"
+  },
+  {
+   "name": "badges-split[\"  3PCS · 타원형  \"]",
+   "ok": true,
+   "detail": "→ [\"3PCS\",\"타원형\",\"\"]"
+  },
+  {
+   "name": "badges-split[\"A · B · C · D\"]",
+   "ok": true,
+   "detail": "→ [\"A\",\"B\",\"C\",\"D\"]"
+  },
+  {
+   "name": "badges-split[\"하나뿐인 배지\"]",
+   "ok": true,
+   "detail": "→ [\"하나뿐인 배지\",\"\",\"\"]"
+  },
+  {
+   "name": "badges-split[\"\"]",
+   "ok": true,
+   "detail": "→ [\"\",\"\",\"\"]"
+  },
+  {
+   "name": "badges-array-kept",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "badges-idempotent",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "badges-missing-default",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "badges-render-3",
+   "ok": true,
+   "detail": "렌더에 3개 모두 존재 + 마이그레이션 전후 렌더 동일(=)"
+  },
+  {
+   "name": "formula body=12 → 7pt",
+   "ok": true,
+   "detail": "got 7pt"
+  },
+  {
+   "name": "formula body=20 → 11.67pt",
+   "ok": true,
+   "detail": "got 11.67pt"
+  },
+  {
+   "name": "formula fontSize=26+body=12 → 7pt",
+   "ok": true,
+   "detail": "got 7pt"
+  },
+  {
+   "name": "inherit(값 없음) → 14pt(기존 출력)",
+   "ok": true,
+   "detail": "got 14pt"
+  },
+  {
+   "name": "12 vs 20 문서 서로 다름",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "fieldSizes sanitize(clamp/invalid/empty)",
+   "ok": true,
+   "detail": "{\"clampUp\":{\"body\":72},\"clampDown\":{\"body\":8}}"
+  },
+  {
+   "name": "hero badge0=48→18pt, badge1/2=16→6pt, 구분자 12pt",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "usp item1=36 → 14×36/18=28pt",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "evidence w=36 → 14×36/18=28pt (개별 span)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "notice row1v=28 → 12×28/14=24pt",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "notice fee=28 → 14×28/14=28pt",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "detail caption0=36 → 12×36/18=24pt",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "name": "png wrapSections=true 회귀",
+   "ok": true,
+   "detail": "wrapper + 필드 크기(18pt) 포함, validateHtml 이슈 0건"
+  }
+ ]
+}

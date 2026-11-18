@@ -1,0 +1,49 @@
+{
+ "A_body_12px": {
+  "file": "body-12px.png",
+  "image": "780x500",
+  "ink_pixels": 386,
+  "ink_bbox": [
+   327,
+   37,
+   452,
+   44
+  ],
+  "ink_bbox_width": 126,
+  "ink_bbox_height": 8,
+  "text_bands": [
+   {
+    "top": 37,
+    "bottom": 44,
+    "height": 8
+   }
+  ]
+ },
+ "B_body_20px": {
+  "file": "body-20px.png",
+  "image": "780x500",
+  "ink_pixels": 933,
+  "ink_bbox": [
+   284,
+   33,
+   494,
+   45
+  ],
+  "ink_bbox_width": 211,
+  "ink_bbox_height": 13,
+  "text_bands": [
+   {
+    "top": 33,
+    "bottom": 45,
+    "height": 13
+   }
+  ]
+ },
+ "diff_pixels_between_images": 1561,
+ "first_band_height_A_px": 8,
+ "first_band_height_B_px": 13,
+ "height_ratio_B_over_A": 1.625,
+ "expected_ratio": 1.6666666666666667,
+ "ink_bbox_width_growth_px": 85,
+ "pass": true
+}

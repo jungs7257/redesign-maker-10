@@ -1,0 +1,24 @@
+첨부한 HANDOFF_step3b_png_fix.md 와 png_verify.ps1 을 읽어줙니다.
+
+경로:
+- /home/jungs7257/.openclaw/workspace/media/inbound/openclaw-staged-ad14f0dd-18ed-4235-9997-029036ef0383/input-HANDOFF_step3b_png_fix---1ef73c5b-494b-4603-aa1d-9fe1b84a5de1.md
+- /home/jungs7257/.openclaw/workspace/media/inbound/openclaw-staged-ad14f0dd-18ed-4235-9997-029036ef0383/input-png_verify---aa7f55fb-b5ae-4b16-a030-72af962d34d7.txt
+
+상세페이지 빌더의 "PNG 다운로드"가 깨져 있어. 파일은 생기는데 내용이 100% 흰색이고,
+입력값을 바꿔도 MD5 해시가 똑같아(변경 반영 자체가 안 됨).
+
+먼저 원인을 특정해서 보고해줘:
+- 캡처 대상 노드가 실제 미리보기인지
+- 스타일이 인라인으로 굳었는지
+- 콘솔에 어떤 에러가 뜨는지
+
+그다음 고치고, 문서 4번의 수용 기준 P1~P6을 실제로 실행해서 결과표로 보고해.
+특히 P3은 "상품명을 바꿔 재출력 → MD5가 달라지는지"야. 이게 통과해야 진짜 고친 거야.
+
+제약:
+- localStorage 데이터("jjungs:detail-builder:v1" 및 .bak 백업)는 절대 건드리지 마.
+- 신규 의존성은 1개까지만.
+- 로컬 확인은 http://localhost:3002/ 에서.
+- PNG 검증은 Windows ps1 대신 문서 부록의 Python/Pillow 로직으로 Linux에서 직접 실측해.
+
+이 프로젝트 루트 CLAUDE.md 규칙도 따르고, 마치면 변경 파일 목록 + npm run build 성공 여부 + 재시작 필요 여부를 보고해.

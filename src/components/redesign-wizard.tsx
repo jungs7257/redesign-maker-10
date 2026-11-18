@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ContactWidget } from "@/components/contact-widget";
+import { DetailBuilder } from "@/components/detail-builder";
 import { TextOverlayEditor } from "@/components/text-overlay-editor";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
@@ -33,7 +34,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn, withBasePath } from "@/lib/utils";
 
 type Model = "openai" | "google" | "kie" | "kie-nano-banana" | "kie-gpt-image-2-5" | "kie-gpt-image-2-5-sunburst" | "openai-direct";
-type View = "dashboard" | "workspace" | "results";
+type View = "dashboard" | "workspace" | "results" | "builder";
 /** restructure: 전환 구조로 재구성 / preserve: 원본 구성과 문구를 그대로 두고 디자인만 새로 만든다. */
 type RedesignMode = "restructure" | "preserve";
 
@@ -856,7 +857,8 @@ export function RedesignWizard() {
           {[
             ["dashboard", "대시보드", "01"],
             ["workspace", "리디자인 작업", "02"],
-            ["results", "결과 확인", "03"]
+            ["results", "결과 확인", "03"],
+            ["builder", "상세페이지 빌더", "04"]
           ].map(([id, label, index]) => (
             <button
               key={id}
@@ -947,6 +949,9 @@ export function RedesignWizard() {
             generating={generating}
             editingSectionId={editingSectionId}
           />
+        )}
+        {view === "builder" && (
+          <DetailBuilder />
         )}
       </main>
 
